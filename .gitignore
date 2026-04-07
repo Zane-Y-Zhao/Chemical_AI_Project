@@ -1,0 +1,14 @@
+﻿# 忽略 Visual Studio 的缓存
+.vs/
+*.suo
+*.user
+*.sln.docstates
+
+# 忽略 Python 缓存
+__pycache__/
+*.pyc
+
+# 忽略数据库和日志
+*.db
+*.sqlite3
+*.log

@@ -8,8 +8,12 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 import logging
+from typing import List
 from datetime import datetime
-import uvicorn # 👈 新增：这是让 FastAPI 跑起来的引擎
+import uvicorn  # 👈 这是让 FastAPI 跑起来的引擎
+
+# --- 👇 新增：导入跨域支持 (Day 2 新增代码) ---
+from fastapi.middleware.cors import CORSMiddleware
 
 # 2. 导入数据库配置 (确保 database.py 在同一文件夹)
 from database import engine, Base, HeatData, SessionLocal
@@ -20,6 +24,16 @@ Base.metadata.create_all(bind=engine)
 
 # --- 创建 FastAPI 应用 ---
 app = FastAPI(title="化工余热回收系统 API")
+
+# --- 👇 第二步：配置跨域 (Day 2 新增代码) ---
+# 这段代码要放在 app = FastAPI() 之后，路由定义之前
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 允许所有来源，开发阶段用。生产环境建议改成 ["http://localhost:5173"]
+    allow_credentials=True,
+    allow_methods=["*"],  # 允许所有方法 (GET, POST, PUT, DELETE)
+    allow_headers=["*"],  # 允许所有请求头
+)
 
 # --- 配置日志 ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -46,9 +60,19 @@ class HeatDataCreate(BaseModel):
     class Config:
         from_attributes = True
 
+# --- 👇 Day 2 新增：用于响应查询的模型 (包含 ID 和时间) ---
+class HeatDataResponse(HeatDataCreate):
+    id: int
+    timestamp: datetime
+    heat_value: float = None  # 对应计算出的热量 Q
+    description: str = None
+
+    class Config:
+        from_attributes = True
+
 # --- API 路由 ---
 
-@app.post("/api/v1/data", response_model=HeatDataCreate)
+@app.post("/api/v1/data", response_model=HeatDataResponse)
 def create_data_point(item: HeatDataCreate, db: Session = Depends(get_db)):
     """
     接收数据并存入数据库
@@ -60,21 +84,36 @@ def create_data_point(item: HeatDataCreate, db: Session = Depends(get_db)):
             temperature=item.temperature,
             temp_outlet=item.temp_outlet,
             flow_rate=item.flow_rate,
-            timestamp=datetime.now()
+            # timestamp=datetime.now() # 数据库模型里有默认值，这里可以不填
         )
-        
+
         # 2. 提交到数据库
         db.add(db_item)
         db.commit()
         db.refresh(db_item)
-        
+
         logger.info(f"✅ 成功写入数据: t1={item.temperature}, t2={item.temp_outlet}")
         return db_item
-        
+
     except Exception as e:
         db.rollback()
         logger.error(f"❌ 数据库写入失败: {e}")
         raise HTTPException(status_code=500, detail="数据库写入错误")
+
+# --- 👇 Day 2 新增：获取所有数据的接口 ---
+@app.get("/api/v1/data", response_model=List[HeatDataResponse])
+def get_all_data(db: Session = Depends(get_db)):
+    """
+    查询数据库中的所有历史数据
+    前端图表需要用到这个接口
+    """
+    try:
+        # 查询所有数据，按时间倒序排列
+        data = db.query(HeatData).order_by(HeatData.timestamp.desc()).all()
+        return data
+    except Exception as e:
+        logger.error(f"❌ 数据读取失败: {e}")
+        raise HTTPException(status_code=500, detail="数据读取失败")
 
 @app.get("/")
 def read_root():

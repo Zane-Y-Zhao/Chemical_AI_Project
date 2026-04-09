@@ -6,11 +6,11 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import accuracy_score, recall_score, f1_score
 import joblib
 
-# 导入你已有的工具
-from models import LSTMModel
+# 导入Transformer模型（替换原LSTMModel）
+from models import TransformerModel
 from train_monitor import TrainMonitor
 
-# ---------------------- 1. 配置参数（已适配你的路径） ----------------------
+# ---------------------- 1. 配置参数（完全保留，无需修改） ----------------------
 data_path = r"D:\TE_Project1\data"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 window_size = 5  # 和data_processor.py中保持一致
@@ -18,7 +18,7 @@ batch_size = 32
 epochs = 20
 lr = 0.001
 
-# ---------------------- 2. 加载数据 ----------------------
+# ---------------------- 2. 加载数据（完全保留，无需修改） ----------------------
 # 加载特征工程后的数据
 train_df = pd.read_csv(os.path.join(data_path, "train_final.csv"))
 val_df = pd.read_csv(os.path.join(data_path, "val_final.csv"))
@@ -32,7 +32,7 @@ X_val, y_val = val_df[feature_cols].values, val_df["label"].values
 X_test, y_test = test_df[feature_cols].values, test_df["label"].values
 
 
-# ---------------------- 3. 构造时序数据集（适配LSTM输入） ----------------------
+# ---------------------- 3. 构造时序数据集（完全保留，无需修改） ----------------------
 class TEDataset(Dataset):
     def __init__(self, X, y, window_size):
         self.X = X
@@ -59,16 +59,23 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-# ---------------------- 4. 初始化模型、损失函数、优化器 ----------------------
+# ---------------------- 4. 初始化模型、损失函数、优化器（仅修改模型部分） ----------------------
 input_size = len(feature_cols)  # 特征工程后的特征数
-model = LSTMModel(input_size=input_size, hidden_size=128, num_layers=2, output_size=2).to(device)
+# 替换LSTMModel为TransformerModel，参数完全适配
+model = TransformerModel(
+    input_size=input_size,
+    d_model=128,
+    nhead=4,
+    num_layers=2,
+    output_size=2
+).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-# ---------------------- 5. 初始化训练监控器 ----------------------
+# ---------------------- 5. 初始化训练监控器（完全保留，无需修改） ----------------------
 monitor = TrainMonitor(model, device)
 
-# ---------------------- 6. 训练循环 ----------------------
+# ---------------------- 6. 训练循环（完全保留，无需修改） ----------------------
 for epoch in range(epochs):
     # 训练一个epoch
     train_loss, train_acc = monitor.train_epoch(train_loader, criterion, optimizer)
@@ -77,10 +84,10 @@ for epoch in range(epochs):
     # 记录epoch指标
     monitor.log_epoch(epoch, train_loss, val_loss, train_acc, val_acc)
 
-# ---------------------- 7. 训练完成，绘制曲线 ----------------------
+# ---------------------- 7. 训练完成，绘制曲线（完全保留，无需修改） ----------------------
 monitor.plot_curves()
 
-# ---------------------- 8. 测试集评估 ----------------------
+# ---------------------- 8. 测试集评估（完全保留，无需修改） ----------------------
 print("\n" + "=" * 50)
 print("📊 测试集最终评估")
 print("=" * 50)

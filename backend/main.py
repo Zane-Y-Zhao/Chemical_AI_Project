@@ -1,128 +1,115 @@
 ﻿# -*- coding: utf-8 -*-
 """
-后端主程序 - main.py
-注意：这段代码必须放在 backend 文件夹下
+主程序 - main.py (修正版)
+功能：后端服务器，接收数据，提供API，托管前端
 """
 
-# 1. 导入必要的库
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
-import logging 
-from typing import List
-from datetime import datetime
-import uvicorn  # 👈 这是让 FastAPI 跑起来的引擎
-
-# --- 👇 新增：导入跨域支持 (Day 2 新增代码) ---
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import List, Optional
+import os
 
-# 2. 导入数据库配置 (确保 database.py 在同一文件夹)
-from database import engine, Base, HeatData, SessionLocal
+# --- 1. 导入数据库配置 ---
+import database
 
-# --- 数据库初始化 (关键) ---
-# 这行代码会检查数据库，如果表不存在就创建
-Base.metadata.create_all(bind=engine)
+# --- 关键修复：必须显式导入 datetime ---
+from datetime import datetime
 
-# --- 创建 FastAPI 应用 ---
-app = FastAPI(title="化工余热回收系统 API")
+# --- 2. 初始化 FastAPI ---
+app = FastAPI(title="化工余热回收系统")
 
-# --- 👇 第二步：配置跨域 (Day 2 新增代码) ---
-# 这段代码要放在 app = FastAPI() 之后，路由定义之前
+# --- 3. 配置跨域 (CORS) ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 允许所有来源，开发阶段用。生产环境建议改成 ["http://localhost:5173"]
-    allow_credentials=True,
-    allow_methods=["*"],  # 允许所有方法 (GET, POST, PUT, DELETE)
-    allow_headers=["*"],  # 允许所有请求头
+    allow_origins=["*"],  # 允许所有来源（仅用于开发环境）
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# --- 配置日志 ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# --- 4. Pydantic 数据模型 ---
 
-# --- 依赖项：数据库会话 ---
+# 用于接收前端POST数据的模型
+class HeatDataCreate(BaseModel):
+    temperature: float
+    temp_outlet: float
+    flow_rate: float
+    description: Optional[str] = None
+
+# 用于返回给前端GET数据的模型
+class HeatDataResponse(BaseModel):
+    id: int
+    timestamp: datetime  # 这里使用了 datetime，所以必须在上面导入
+    temperature: float
+    temp_outlet: float
+    flow_rate: float
+    heat_value: Optional[float] = None
+    description: Optional[str] = None
+
+    class Config:
+        # 关键配置：允许从ORM对象（SQLAlchemy模型）直接读取数据
+        from_attributes = True
+
+# --- 5. 数据库依赖项 ---
 def get_db():
-    db = SessionLocal()
+    db = database.SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-# --- Pydantic 模型 (数据校验) ---
-# ⚠️ 重点：这里的字段名必须和 database.py 里的字段名一模一样！
-# 根据你之前的 database.py，字段应该是 temperature, temp_outlet, flow_rate
-from pydantic import BaseModel
-
-class HeatDataCreate(BaseModel):
-    temperature: float      # 对应 database.py 的 t1 (高温端温度)
-    temp_outlet: float      # 对应 database.py 的 t2 (低温端温度)
-    flow_rate: float        # 对应 database.py 的 m (质量流量)
-
-    class Config:
-        from_attributes = True
-
-# --- 👇 Day 2 新增：用于响应查询的模型 (包含 ID 和时间) ---
-class HeatDataResponse(HeatDataCreate):
-    id: int
-    timestamp: datetime
-    heat_value: float = None  # 对应计算出的热量 Q
-    description: str = None
-
-    class Config:
-        from_attributes = True
-
-# --- API 路由 ---
-
+# --- 6. API 路由：接收数据 (POST) ---
 @app.post("/api/v1/data", response_model=HeatDataResponse)
-def create_data_point(item: HeatDataCreate, db: Session = Depends(get_db)):
-    """
-    接收数据并存入数据库
-    """
-    try:
-        # 1. 创建数据库对象
-        # 注意：这里直接使用传入的数据，不需要计算，直接存
-        db_item = HeatData(
-            temperature=item.temperature,
-            temp_outlet=item.temp_outlet,
-            flow_rate=item.flow_rate,
-            # timestamp=datetime.now() # 数据库模型里有默认值，这里可以不填
-        )
+def create_data_point(data: HeatDataCreate, db: Session = Depends(get_db)):
+    # 创建数据库模型实例
+    db_data = database.HeatData(
+        temperature=data.temperature,
+        temp_outlet=data.temp_outlet,
+        flow_rate=data.flow_rate,
+        description=data.description
+    )
 
-        # 2. 提交到数据库
-        db.add(db_item)
-        db.commit()
-        db.refresh(db_item)
+    # 计算热量
+    delta_t = data.temperature - data.temp_outlet
+    calculated_heat = data.flow_rate * 4.18 * delta_t
+    db_data.heat_value = calculated_heat
 
-        logger.info(f"✅ 成功写入数据: t1={item.temperature}, t2={item.temp_outlet}")
-        return db_item
+    # 写入数据库
+    db.add(db_data)
+    db.commit()
+    db.refresh(db_data)
+    return db_data
 
-    except Exception as e:
-        db.rollback()
-        logger.error(f"❌ 数据库写入失败: {e}")
-        raise HTTPException(status_code=500, detail="数据库写入错误")
-
-# --- 👇 Day 2 新增：获取所有数据的接口 ---
+# --- 7. API 路由：获取所有数据 (GET) ---
 @app.get("/api/v1/data", response_model=List[HeatDataResponse])
-def get_all_data(db: Session = Depends(get_db)):
+def read_data(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """
-    查询数据库中的所有历史数据
-    前端图表需要用到这个接口
+    获取历史数据，用于前端图表展示
     """
-    try:
-        # 查询所有数据，按时间倒序排列
-        data = db.query(HeatData).order_by(HeatData.timestamp.desc()).all()
-        return data
-    except Exception as e:
-        logger.error(f"❌ 数据读取失败: {e}")
-        raise HTTPException(status_code=500, detail="数据读取失败")
+    # 按时间倒序排列，最新的在前面
+    data = db.query(database.HeatData).order_by(database.HeatData.timestamp.desc()).offset(skip).limit(limit).all()
+    return data
 
-@app.get("/")
-def read_root():
-    return {"message": "化工余热回收系统已启动", "status": "running"}
+# --- 8. 首页路由 ---
+@app.get("/", response_class=HTMLResponse)
+async def read_index():
+    # 动态获取当前文件所在目录
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # 假设 frontend 文件夹在 backend 的上一级目录
+    frontend_dir = os.path.join(current_dir, "..", "frontend")
 
-# --- 主函数：程序的入口 (这就是之前缺失的点火钥匙) ---
-# 当你直接运行这个文件时，执行下面的代码
+    file_path = os.path.join(frontend_dir, "index.html")
+
+    if not os.path.exists(file_path):
+        return f"<h1>错误：找不到 index.html</h1><p>请检查路径: {file_path}</p>"
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+# --- 9. 启动命令 ---
 if __name__ == "__main__":
-    # 使用 uvicorn 启动应用
-    # host="0.0.0.0" 表示允许任何网络访问
-    # port=8000 表示在 8000 端口监听
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    print("启动服务器... 请访问 http://127.0.0.1:8000")
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)

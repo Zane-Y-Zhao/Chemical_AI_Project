@@ -46,10 +46,12 @@ def build_decision_prompt(
 
     请生成一条具体、可执行、符合安全规范的操作建议（限100字内）："""
 
-    return ChatPromptTemplate.from_messages([
+    prompt_template = ChatPromptTemplate.from_messages([
         SystemMessage(content=system_prompt),
         HumanMessage(content=human_prompt)
-    ]).format()
+    ])
+    prompt_value = prompt_template.format()
+    return prompt_value.to_string() if hasattr(prompt_value, 'to_string') else str(prompt_value)
 
 # 辅助函数：从知识库提取安全条款（专用于safety_rules参数）
 def get_safety_rules(vectorstore, top_k=1):

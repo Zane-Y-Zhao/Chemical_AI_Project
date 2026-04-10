@@ -5,7 +5,7 @@ import json
 import requests
 from pathlib import Path
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from knowledge_base.llm_config import call_qwen
 from knowledge_base.prompt_engineering import build_decision_prompt, get_safety_rules
 
@@ -16,7 +16,7 @@ EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 PREDICTION_API_URL = "http://localhost:8000/docs"  # 赵元卿提供的模型服务地址
 
 # 2. 初始化组件
-embedding_func = SentenceTransformerEmbeddings(model_name=EMBEDDING_MODEL)
+embedding_func = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 vectorstore = Chroma(
     persist_directory=str(DB_PATH),
     embedding_function=embedding_func,
@@ -75,16 +75,16 @@ def generate_decision_suggestion():
     
     # 强制添加溯源标记（体现协作责任）
     final_output = f"""【智能建议】{suggestion}
-    
+
 
 
 ---
 
 
 📌 生成依据：
-- 预测服务：赵元卿团队（{prediction_data['timestamp']}）
-- 知识来源：化工知识库（检索关键词：{retrieval_keywords}）
-- 安全条款：国标GB/T 37243-2019"""
+- 预测服务：冯申雨（{prediction_data['timestamp']}）
+- 知识来源：韩永盛（检索关键词：{retrieval_keywords}）
+- 安全条款：杨泽彤"""
     
     return final_output  # 返回完整决策建议
 

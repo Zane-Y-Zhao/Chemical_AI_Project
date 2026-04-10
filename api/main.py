@@ -35,7 +35,7 @@ import logging
 import time
 from pathlib import Path
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from knowledge_base.llm_config import call_qwen
 from knowledge_base.prompt_engineering import build_decision_prompt, get_safety_rules
 
@@ -54,7 +54,7 @@ logger = logging.getLogger("decision_api")
 
 # === 2. 初始化向量库（单例模式，避免重复加载）===
 # 暂时注释掉向量数据库初始化，以测试服务器启动
-# embedding_func = SentenceTransformerEmbeddings(model_name=EMBEDDING_MODEL)
+# embedding_func = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 # vectorstore = Chroma(
 #     persist_directory=str(DB_PATH),
 #     embedding_function=embedding_func,

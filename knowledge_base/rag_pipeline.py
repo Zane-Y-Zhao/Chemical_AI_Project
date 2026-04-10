@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 from chromadb.utils import embedding_functions
 
@@ -16,19 +16,36 @@ DB_PATH = ROOT_DIR / ".chroma_db"
 CLEANED_DIR = ROOT_DIR / "knowledge_base" / "docs_cleaned"
 
 # 2. 初始化嵌入模型（复用Day 1轻量模型）
-embedding_func = SentenceTransformerEmbeddings(
+embedding_func = HuggingFaceEmbeddings(
     model_name="all-MiniLM-L6-v2"
 )
 
 # 3. 加载清洗后的知识片段
 def load_cleaned_chunks() -> List[Document]:
     docs = []
-    for chunk_file in CLEANED_DIR.glob("*_chunks.txt"):
-        with open(chunk_file, "r", encoding="utf-8") as f:
-            content = f.read()
+    print(f"正在加载清洗后的知识片段，目录：{CLEANED_DIR}")
+    print(f"目录是否存在：{CLEANED_DIR.exists()}")
+    
+    # 列出目录中的文件
+    files = list(CLEANED_DIR.glob("*_chunks.txt"))
+    print(f"找到 {len(files)} 个文件")
+    for file in files:
+        print(f"文件：{file.name}")
+    
+    for chunk_file in files:
+        print(f"处理文件：{chunk_file.name}")
+        try:
+            with open(chunk_file, "r", encoding="utf-8") as f:
+                content = f.read()
+            print(f"文件大小：{len(content)} 字符")
+        except Exception as e:
+            print(f"读取文件失败：{str(e)}")
+            continue
         
         # 按 "[片段X]" 分割，提取每段内容
         segments = re.split(r'\[片段\d+\]\n', content)
+        print(f"分割后得到 {len(segments)} 个片段")
+        
         for seg in segments[1:]:  # 跳过首段空内容
             seg = seg.strip()
             if len(seg) > 20:  # 过滤过短片段
@@ -41,6 +58,11 @@ def load_cleaned_chunks() -> List[Document]:
                         "chunk_id": f"{source_doc}-{len(docs)+1}"
                     }
                 ))
+                print(f"添加片段，当前总数：{len(docs)}")
+            else:
+                print(f"跳过过短片段，长度：{len(seg)}")
+    
+    print(f"加载完成，总计 {len(docs)} 个知识片段")
     return docs
 
 # 4. 构建RAG向量库（持久化）

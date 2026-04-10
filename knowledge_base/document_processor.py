@@ -14,8 +14,10 @@ def clean_text(text: str) -> str:
     text = re.sub(r'第\s*\d+\s*页\s*共\s*\d+\s*页|©\d{4}.*', '', text)
     # 移除孤立数字编号（如"1. "、"2. "开头但后无实质内容）
     text = re.sub(r'^\d+\.\s*$', '', text, flags=re.MULTILINE)
-    # 保留关键化工符号：°C、MPa、kg/h、%等，但剔除乱码字符（保留Unicode汉字+英文+数字+常用单位）
-    text = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9\s\u00B0C\u33A5\u338E\u0025\u002E\u002D\u002F]', '', text)
+    # 只保留中文、英文、数字和常用标点
+    text = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9\s\u002E\u002D\u002C\u003B\u0021\u003F\u0028\u0029]', '', text)
+    # 移除连续的无意义字符
+    text = re.sub(r'(.)\1{2,}', r'\1', text)
     return text.strip()
 
 def extract_from_pdf(pdf_path: Path) -> str:
@@ -24,8 +26,17 @@ def extract_from_pdf(pdf_path: Path) -> str:
         reader = PyPDF2.PdfReader(f)
         full_text = ""
         for page in reader.pages:
-            text = page.extract_text() or ""
+            # 尝试使用不同的提取方法
+            try:
+                text = page.extract_text(extraction_mode="layout") or ""
+            except Exception:
+                text = page.extract_text() or ""
             full_text += text + "\n"
+    # 尝试使用不同的编码处理
+    try:
+        full_text = full_text.encode('utf-8', errors='ignore').decode('utf-8')
+    except Exception:
+        pass
     return clean_text(full_text)
 
 def extract_from_docx(docx_path: Path) -> str:
@@ -73,7 +84,7 @@ if __name__ == "__main__":
     all_chunks = []
     for file_path in RAW_DIR.iterdir():
         if file_path.suffix.lower() in ['.pdf', '.docx']:
-            print(f"🔍 处理文档：{file_path.name}")
+            print(f"处理文档：{file_path.name}")
             try:
                 if file_path.suffix.lower() == '.pdf':
                     raw_text = extract_from_pdf(file_path)
@@ -81,7 +92,7 @@ if __name__ == "__main__":
                     raw_text = extract_from_docx(file_path)
                 
                 chunks = split_into_chunks(raw_text)
-                print(f"✅ 提取 {len(chunks)} 个语义片段")
+                print(f"提取 {len(chunks)} 个语义片段")
                 
                 # 保存清洗后片段（供调试查看）
                 with open(OUTPUT_DIR / f"{file_path.stem}_chunks.txt", "w", encoding="utf-8") as f:
@@ -90,7 +101,7 @@ if __name__ == "__main__":
                 
                 all_chunks.extend(chunks)
             except Exception as e:
-                print(f"❌ 处理失败 {file_path.name}：{str(e)}")
+                print(f"处理失败 {file_path.name}：{str(e)}")
     
-    print(f"\n🎯 总计生成 {len(all_chunks)} 个可向量化的知识片段")
-    print(f"📁 清洗结果已存至：{OUTPUT_DIR}")
+    print(f"\n总计生成 {len(all_chunks)} 个可向量化的知识片段")
+    print(f"清洗结果已存至：{OUTPUT_DIR}")

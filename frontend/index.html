@@ -3,156 +3,484 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>余热回收监控系统</title>
-    <!-- 引入 Vue 3 (用于简化界面操作) -->
+    <title>化工余热智能管理系统</title>
+    <!-- 引入 Vue 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- 引入 Axios (用于发送网络请求) -->
+    <!-- 引入 Axios -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <!-- 引入一点简单的样式 -->
+    <!-- 引入 ECharts -->
+    <script src="js/echarts.min.js"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #f4f6f8;
-            margin: 0;
-            padding: 20px;
+            background-color: #121212;
+            color: #e0e0e0;
+            min-height: 100vh;
         }
 
         .container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .card {
-            background: white;
+            width: 100%;
+            height: 100vh;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto 1fr 1fr 1fr;
+            gap: 20px;
+            grid-template-areas:
+                "header header header"
+                "overview overview alerts"
+                "trends trends equipment"
+                "analysis analysis analysis";
         }
 
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
-        }
-
-        input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-            button:hover {
-                background-color: #0056b3;
-            }
-
-        .result-box {
-            background-color: #e9ecef;
-            padding: 15px;
-            border-radius: 4px;
-            text-align: center;
-            margin-top: 10px;
-        }
-
-        .result-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #28a745;
-        }
-
-        .history-item {
-            border-bottom: 1px solid #eee;
-            padding: 10px 0;
+        .header {
+            grid-area: header;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 12px;
+            padding: 20px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
 
-            .history-item:last-child {
-                border-bottom: none;
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #4CAF50;
+        }
+
+        .header .status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .status-indicator.online {
+            background-color: #4CAF50;
+            box-shadow: 0 0 10px #4CAF50;
+        }
+
+        .status-indicator.warning {
+            background-color: #FFC107;
+            box-shadow: 0 0 10px #FFC107;
+        }
+
+        .status-indicator.error {
+            background-color: #F44336;
+            box-shadow: 0 0 10px #F44336;
+        }
+
+        .overview {
+            grid-area: overview;
+            background: #1e1e30;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .overview h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #4CAF50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .kpi-card {
+            background: #252538;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #4CAF50;
+            transition: transform 0.3s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .kpi-card.warning {
+            border-left-color: #FFC107;
+        }
+
+        .kpi-card.error {
+            border-left-color: #F44336;
+        }
+
+        .kpi-title {
+            font-size: 12px;
+            color: #9e9e9e;
+            margin-bottom: 5px;
+        }
+
+        .kpi-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 5px;
+        }
+
+        .kpi-prediction {
+            font-size: 12px;
+            color: #4CAF50;
+        }
+
+        .alerts {
+            grid-area: alerts;
+            background: #1e1e30;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .alerts h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #F44336;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-item {
+            background: #252538;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #F44336;
+        }
+
+        .alert-item.warning {
+            border-left-color: #FFC107;
+        }
+
+        .alert-item.info {
+            border-left-color: #2196F3;
+        }
+
+        .alert-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .alert-message {
+            font-size: 12px;
+            color: #9e9e9e;
+            margin-bottom: 5px;
+        }
+
+        .alert-time {
+            font-size: 10px;
+            color: #757575;
+        }
+
+        .trends {
+            grid-area: trends;
+            background: #1e1e30;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .trends h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #2196F3;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 250px;
+        }
+
+        .equipment {
+            grid-area: equipment;
+            background: #1e1e30;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .equipment h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #FF9800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .equipment-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .equipment-card {
+            background: #252538;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .equipment-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .equipment-card.normal {
+            border-top: 4px solid #4CAF50;
+        }
+
+        .equipment-card.warning {
+            border-top: 4px solid #FFC107;
+        }
+
+        .equipment-card.error {
+            border-top: 4px solid #F44336;
+        }
+
+        .equipment-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .equipment-status {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        .equipment-status.normal {
+            background-color: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+
+        .equipment-status.warning {
+            background-color: rgba(255, 193, 7, 0.2);
+            color: #FFC107;
+        }
+
+        .equipment-status.error {
+            background-color: rgba(244, 67, 54, 0.2);
+            color: #F44336;
+        }
+
+        .analysis {
+            grid-area: analysis;
+            background: #1e1e30;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .analysis h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #9C27B0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .analysis-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .energy-chart {
+            width: 100%;
+            height: 200px;
+        }
+
+        .recommendations {
+            background: #252538;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .recommendations h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #9C27B0;
+        }
+
+        .recommendation-item {
+            font-size: 12px;
+            margin-bottom: 8px;
+            padding-left: 15px;
+            position: relative;
+        }
+
+        .recommendation-item::before {
+            content: "▶";
+            position: absolute;
+            left: 0;
+            color: #9C27B0;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr 1fr;
+                grid-template-areas:
+                    "header header"
+                    "overview overview"
+                    "trends equipment"
+                    "analysis analysis";
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "header"
+                    "overview"
+                    "alerts"
+                    "trends"
+                    "equipment"
+                    "analysis";
             }
 
-        .timestamp {
-            font-size: 12px;
-            color: #999;
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .analysis-content {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-
     <div id="app" class="container">
-        <h1>🔥 余热回收计算器</h1>
-
-        <!-- 输入区域 -->
-        <div class="card">
-            <div class="form-group">
-                <label>高温端温度 (t1) °C</label>
-                <input type="number" v-model="form.temperature" placeholder="例如: 80">
-            </div>
-
-            <div class="form-group">
-                <label>低温端温度 (t2) °C</label>
-                <input type="number" v-model="form.temp_outlet" placeholder="例如: 70">
-            </div>
-
-            <div class="form-group">
-                <label>质量流量 (m) kg/s</label>
-                <input type="number" v-model="form.flow_rate" placeholder="例如: 10">
-            </div>
-
-            <div class="form-group">
-                <label>备注描述</label>
-                <input type="text" v-model="form.description" placeholder="选填">
-            </div>
-
-            <button @click="submitData" :disabled="loading">
-                {{ loading ? '计算中...' : '开始计算热量' }}
-            </button>
-
-            <!-- 实时结果显示 -->
-            <div class="result-box" v-if="lastResult">
-                <div>计算出的回收热量 (Q)</div>
-                <div class="result-value">{{ lastResult.heat_value }} kJ</div>
-                <div class="timestamp">{{ lastResult.timestamp }}</div>
+        <!-- 头部 -->
+        <div class="header">
+            <h1>🏭 化工余热智能管理系统</h1>
+            <div class="status">
+                <div class="status-item">
+                    <div class="status-indicator online"></div>
+                    <span>系统运行正常</span>
+                </div>
+                <div class="status-item">
+                    <span>实时监控中</span>
+                </div>
+                <div class="status-item">
+                    <span>{{ currentTime }}</span>
+                </div>
             </div>
         </div>
 
-        <!-- 历史记录区域 -->
-        <div class="card">
-            <h3>最近计算记录</h3>
-            <div v-if="history.length === 0" style="color: #999; text-align: center;">暂无数据</div>
-
-            <div v-for="item in history" :key="item.id" class="history-item">
-                <div>
-                    <strong>ΔT: {{ item.temperature - item.temp_outlet }}°C</strong>
-                    (流量: {{ item.flow_rate }})
+        <!-- 综合概览 -->
+        <div class="overview">
+            <h2>📊 综合概览</h2>
+            <div class="kpi-grid">
+                <div class="kpi-card" :class="{ warning: temperature > 90, error: temperature > 100 }">
+                    <div class="kpi-title">高温端温度</div>
+                    <div class="kpi-value">{{ temperature.toFixed(1) }} °C</div>
+                    <div class="kpi-prediction">预测: {{ temperaturePrediction.toFixed(1) }} °C</div>
                 </div>
-                <div style="text-align: right;">
-                    <span style="color: #28a745; font-weight: bold;">{{ item.heat_value }} kJ</span><br>
-                    <span class="timestamp">{{ item.timestamp }}</span>
+                <div class="kpi-card" :class="{ warning: pressure > 5, error: pressure > 8 }">
+                    <div class="kpi-title">系统压力</div>
+                    <div class="kpi-value">{{ pressure.toFixed(1) }} MPa</div>
+                    <div class="kpi-prediction">预测: {{ pressurePrediction.toFixed(1) }} MPa</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">余热回收量</div>
+                    <div class="kpi-value">{{ heatRecovery.toFixed(1) }} kJ</div>
+                    <div class="kpi-prediction">预测: {{ heatRecoveryPrediction.toFixed(1) }} kJ</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">能耗</div>
+                    <div class="kpi-value">{{ energyConsumption.toFixed(1) }} kW</div>
+                    <div class="kpi-prediction">预测: {{ energyConsumptionPrediction.toFixed(1) }} kW</div>
+                </div>
+                <div class="kpi-card" :class="{ warning: efficiency < 80, error: efficiency < 60 }">
+                    <div class="kpi-title">系统效率</div>
+                    <div class="kpi-value">{{ efficiency.toFixed(1) }}%</div>
+                    <div class="kpi-prediction">预测: {{ efficiencyPrediction.toFixed(1) }}%</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">设备运行状态</div>
+                    <div class="kpi-value">{{ equipmentStatus }}</div>
+                    <div class="kpi-prediction">健康度: {{ equipmentHealth }}%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 预警信息 -->
+        <div class="alerts">
+            <h2>⚠️ 预警信息</h2>
+            <div v-for="alert in alerts" :key="alert.id" class="alert-item" :class="alert.level">
+                <div class="alert-title">{{ alert.title }}</div>
+                <div class="alert-message">{{ alert.message }}</div>
+                <div class="alert-time">{{ alert.time }}</div>
+            </div>
+            <div v-if="alerts.length === 0" style="text-align: center; color: #757575; padding: 20px;">
+                暂无预警信息
+            </div>
+        </div>
+
+        <!-- 趋势分析 -->
+        <div class="trends">
+            <h2>📈 趋势分析</h2>
+            <div class="chart-container" ref="trendChart"></div>
+        </div>
+
+        <!-- 设备状态 -->
+        <div class="equipment">
+            <h2>🏗️ 设备状态</h2>
+            <div class="equipment-grid">
+                <div v-for="equipment in equipmentList" :key="equipment.id" class="equipment-card" :class="equipment.status">
+                    <div class="equipment-name">{{ equipment.name }}</div>
+                    <div class="equipment-status" :class="equipment.status">{{ equipment.statusText }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据分析与建议 -->
+        <div class="analysis">
+            <h2>📋 数据分析与建议</h2>
+            <div class="analysis-content">
+                <div class="energy-chart" ref="energyChart"></div>
+                <div class="recommendations">
+                    <h3>智能操作建议</h3>
+                    <div v-for="recommendation in recommendations" :key="recommendation.id" class="recommendation-item">
+                        {{ recommendation.content }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -162,64 +490,337 @@
         const { createApp } = Vue
 
         createApp({
-        data() {
-        return {
-        loading: false,
-        lastResult: null,
-        history: [],
-        // 表单数据模型
-        form: {
-        temperature: '',
-        temp_outlet: '',
-        flow_rate: '',
-        description: '前端测试数据'
-        }
-        }
-        },
-        mounted() {
-        // 页面加载时自动获取历史记录
-        this.fetchHistory()
-        },
-        methods: {
-        // 发送数据到后端
-        async submitData() {
-        if (!this.form.temperature || !this.form.temp_outlet || !this.form.flow_rate) {
-        alert("请填写完整的温度和流量数据！")
-        return
-        }
-
-        this.loading = true
-        try {
-        // 发送 POST 请求到 FastAPI
-        const response = await axios.post('http://127.0.0.1:8000/api/v1/data', this.form)
-
-        // 成功后更新界面
-        this.lastResult = response.data
-        this.fetchHistory() // 刷新列表
-
-        // 简单的成功提示
-        alert(`计算成功！回收热量: ${response.data.heat_value} kJ`)
-
-        } catch (error) {
-        console.error(error)
-        alert("连接后端失败，请确保 Python 后端正在运行！")
-        } finally {
-        this.loading = false
-        }
-        },
-
-        // 从后端获取历史记录
-        async fetchHistory() {
-        try {
-        const response = await axios.get('http://127.0.0.1:8000/api/v1/data')
-        this.history = response.data
-        } catch (error) {
-        console.error("获取历史数据失败", error)
-        }
-        }
-        }
+            data() {
+                return {
+                    // 实时数据
+                    temperature: 85.5,
+                    pressure: 4.2,
+                    heatRecovery: 1250.8,
+                    energyConsumption: 15.6,
+                    efficiency: 85.2,
+                    equipmentStatus: "正常",
+                    equipmentHealth: 92,
+                    
+                    // 预测数据
+                    temperaturePrediction: 86.2,
+                    pressurePrediction: 4.3,
+                    heatRecoveryPrediction: 1280.5,
+                    energyConsumptionPrediction: 15.8,
+                    efficiencyPrediction: 84.5,
+                    
+                    // 预警信息
+                    alerts: [
+                        {
+                            id: 1,
+                            title: "温度预警",
+                            message: "高温端温度即将超过阈值",
+                            time: "2026-04-10 14:30:22",
+                            level: "warning"
+                        },
+                        {
+                            id: 2,
+                            title: "效率下降",
+                            message: "系统效率较昨日下降5%",
+                            time: "2026-04-10 14:25:10",
+                            level: "info"
+                        }
+                    ],
+                    
+                    // 设备列表
+                    equipmentList: [
+                        {
+                            id: 1,
+                            name: "换热器1",
+                            status: "normal",
+                            statusText: "正常"
+                        },
+                        {
+                            id: 2,
+                            name: "换热器2",
+                            status: "warning",
+                            statusText: "需要维护"
+                        },
+                        {
+                            id: 3,
+                            name: "泵1",
+                            status: "normal",
+                            statusText: "正常"
+                        },
+                        {
+                            id: 4,
+                            name: "阀门1",
+                            status: "normal",
+                            statusText: "正常"
+                        }
+                    ],
+                    
+                    // 操作建议
+                    recommendations: [
+                        {
+                            id: 1,
+                            content: "建议调整换热器1的运行参数，以提高热交换效率"
+                        },
+                        {
+                            id: 2,
+                            content: "预计30分钟后余热温度将达到峰值，建议提前准备回收设备"
+                        },
+                        {
+                            id: 3,
+                            content: "设备2需要在24小时内进行维护保养"
+                        }
+                    ],
+                    
+                    // 图表实例
+                    trendChart: null,
+                    energyChart: null,
+                    
+                    // 当前时间
+                    currentTime: new Date().toLocaleString()
+                }
+            },
+            mounted() {
+                // 初始化图表
+                this.initCharts()
+                
+                // 启动实时数据更新
+                this.startRealTimeUpdate()
+                
+                // 启动时间更新
+                setInterval(() => {
+                    this.currentTime = new Date().toLocaleString()
+                }, 1000)
+            },
+            methods: {
+                // 初始化图表
+                initCharts() {
+                    // 趋势图
+                    this.trendChart = echarts.init(this.$refs.trendChart)
+                    this.updateTrendChart()
+                    
+                    // 能耗分析图
+                    this.energyChart = echarts.init(this.$refs.energyChart)
+                    this.updateEnergyChart()
+                    
+                    // 响应式调整
+                    window.addEventListener('resize', () => {
+                        this.trendChart.resize()
+                        this.energyChart.resize()
+                    })
+                },
+                
+                // 更新趋势图
+                updateTrendChart() {
+                    const option = {
+                        title: {
+                            text: '关键参数趋势',
+                            textStyle: {
+                                color: '#e0e0e0',
+                                fontSize: 14
+                            }
+                        },
+                        tooltip: {
+                            trigger: 'axis'
+                        },
+                        legend: {
+                            data: ['温度', '压力', '回收热量'],
+                            textStyle: {
+                                color: '#e0e0e0'
+                            }
+                        },
+                        grid: {
+                            left: '3%',
+                            right: '4%',
+                            bottom: '3%',
+                            containLabel: true
+                        },
+                        xAxis: {
+                            type: 'category',
+                            boundaryGap: false,
+                            data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                            axisLine: {
+                                lineStyle: {
+                                    color: '#444'
+                                }
+                            },
+                            axisLabel: {
+                                color: '#e0e0e0'
+                            }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            axisLine: {
+                                lineStyle: {
+                                    color: '#444'
+                                }
+                            },
+                            axisLabel: {
+                                color: '#e0e0e0'
+                            },
+                            splitLine: {
+                                lineStyle: {
+                                    color: '#333'
+                                }
+                            }
+                        },
+                        series: [
+                            {
+                                name: '温度',
+                                type: 'line',
+                                data: [78, 82, 85, 88, 86, 85],
+                                smooth: true,
+                                lineStyle: {
+                                    color: '#FF9800'
+                                },
+                                areaStyle: {
+                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: 'rgba(255, 152, 0, 0.3)' },
+                                        { offset: 1, color: 'rgba(255, 152, 0, 0.1)' }
+                                    ])
+                                }
+                            },
+                            {
+                                name: '压力',
+                                type: 'line',
+                                data: [3.8, 4.0, 4.2, 4.5, 4.3, 4.2],
+                                smooth: true,
+                                lineStyle: {
+                                    color: '#2196F3'
+                                },
+                                areaStyle: {
+                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: 'rgba(33, 150, 243, 0.3)' },
+                                        { offset: 1, color: 'rgba(33, 150, 243, 0.1)' }
+                                    ])
+                                }
+                            },
+                            {
+                                name: '回收热量',
+                                type: 'line',
+                                data: [1100, 1150, 1200, 1280, 1260, 1250],
+                                smooth: true,
+                                lineStyle: {
+                                    color: '#4CAF50'
+                                },
+                                areaStyle: {
+                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: 'rgba(76, 175, 80, 0.3)' },
+                                        { offset: 1, color: 'rgba(76, 175, 80, 0.1)' }
+                                    ])
+                                }
+                            }
+                        ]
+                    }
+                    this.trendChart.setOption(option)
+                },
+                
+                // 更新能耗分析图
+                updateEnergyChart() {
+                    const option = {
+                        title: {
+                            text: '能耗分析',
+                            textStyle: {
+                                color: '#e0e0e0',
+                                fontSize: 14
+                            }
+                        },
+                        tooltip: {
+                            trigger: 'axis',
+                            axisPointer: {
+                                type: 'shadow'
+                            }
+                        },
+                        legend: {
+                            data: ['实际能耗', '节能目标'],
+                            textStyle: {
+                                color: '#e0e0e0'
+                            }
+                        },
+                        grid: {
+                            left: '3%',
+                            right: '4%',
+                            bottom: '3%',
+                            containLabel: true
+                        },
+                        xAxis: {
+                            type: 'category',
+                            data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                            axisLine: {
+                                lineStyle: {
+                                    color: '#444'
+                                }
+                            },
+                            axisLabel: {
+                                color: '#e0e0e0'
+                            }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            axisLine: {
+                                lineStyle: {
+                                    color: '#444'
+                                }
+                            },
+                            axisLabel: {
+                                color: '#e0e0e0'
+                            },
+                            splitLine: {
+                                lineStyle: {
+                                    color: '#333'
+                                }
+                            }
+                        },
+                        series: [
+                            {
+                                name: '实际能耗',
+                                type: 'bar',
+                                data: [120, 132, 101, 134, 90, 230, 210],
+                                itemStyle: {
+                                    color: '#F44336'
+                                }
+                            },
+                            {
+                                name: '节能目标',
+                                type: 'bar',
+                                data: [100, 120, 90, 110, 80, 200, 180],
+                                itemStyle: {
+                                    color: '#4CAF50'
+                                }
+                            }
+                        ]
+                    }
+                    this.energyChart.setOption(option)
+                },
+                
+                // 启动实时数据更新
+                startRealTimeUpdate() {
+                    setInterval(() => {
+                        // 模拟实时数据变化
+                        this.temperature += (Math.random() - 0.5) * 2
+                        this.pressure += (Math.random() - 0.5) * 0.2
+                        this.heatRecovery += (Math.random() - 0.5) * 20
+                        this.energyConsumption += (Math.random() - 0.5) * 0.5
+                        this.efficiency += (Math.random() - 0.5) * 1
+                        
+                        // 模拟预测数据变化
+                        this.temperaturePrediction = this.temperature + (Math.random() - 0.5) * 1
+                        this.pressurePrediction = this.pressure + (Math.random() - 0.5) * 0.1
+                        this.heatRecoveryPrediction = this.heatRecovery + (Math.random() - 0.5) * 10
+                        this.energyConsumptionPrediction = this.energyConsumption + (Math.random() - 0.5) * 0.2
+                        this.efficiencyPrediction = this.efficiency + (Math.random() - 0.5) * 0.5
+                        
+                        // 限制范围
+                        this.temperature = Math.max(60, Math.min(120, this.temperature))
+                        this.pressure = Math.max(0, Math.min(10, this.pressure))
+                        this.heatRecovery = Math.max(800, Math.min(1500, this.heatRecovery))
+                        this.energyConsumption = Math.max(10, Math.min(25, this.energyConsumption))
+                        this.efficiency = Math.max(60, Math.min(100, this.efficiency))
+                        
+                        // 更新图表
+                        this.updateTrendChart()
+                    }, 5000) // 每5秒更新一次
+                }
+            }
         }).mount('#app')
     </script>
-
 </body>
 </html>

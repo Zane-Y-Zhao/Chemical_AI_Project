@@ -1,7 +1,7 @@
-﻿# backend/database.py
+# backend/database.py
 
 import os
-from sqlalchemy import create_engine, Column, Integer, Float, DateTime, String, Index
+from sqlalchemy import create_engine, Column, Integer, Float, DateTime, String, Index, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -54,7 +54,7 @@ def init_db():
     # 注意：SQLAlchemy 的 connect_args 不直接支持 PRAGMA，需通过事件监听或初始化时执行
     # 这里我们提供一个初始化函数供 main.py 调用
     with engine.connect() as con:
-        con.execute("PRAGMA journal_mode=WAL;") # 核心：开启WAL模式
-        con.execute("PRAGMA busy_timeout=5000;") # 设置忙碌超时
+        con.execute(text("PRAGMA journal_mode=WAL;")) # 核心：开启WAL模式
+        con.execute(text("PRAGMA busy_timeout=5000;")) # 设置忙碌超时
         con.commit()
     Base.metadata.create_all(bind=engine)

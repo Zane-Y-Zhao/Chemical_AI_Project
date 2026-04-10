@@ -5,18 +5,38 @@
 """
 
 from fastapi import FastAPI, Depends, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
 import os
+import socket
+
 
 # --- 1. 导入数据库配置 ---
 import database
 
 # --- 关键修复：必须显式导入 datetime ---
 from datetime import datetime
+
+# --- 端口检测函数 ---
+def is_port_available(port):
+    """检查端口是否可用"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("127.0.0.1", port))
+            return True
+        except socket.error:
+            return False
+
+def find_available_port(start_port=8000, max_attempts=10):
+    """查找可用端口"""
+    for port in range(start_port, start_port + max_attempts):
+        if is_port_available(port):
+            return port
+    raise Exception(f"No available port found between {start_port} and {start_port + max_attempts - 1}")
 
 # --- 2. 初始化 FastAPI ---
 app = FastAPI(title="化工余热回收系统")
@@ -107,9 +127,16 @@ async def read_index():
 
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
-
+# 挂载前端静态文件
+current_dir = os.path.dirname(os.path.abspath(__file__))
+frontend_dir = os.path.join(current_dir, "..", "frontend")
+app.mount("/js", StaticFiles(directory=os.path.join(frontend_dir, "js")), name="js")
 # --- 9. 启动命令 ---
 if __name__ == "__main__":
-    print("启动服务器... 请访问 http://127.0.0.1:8000")
+    # 初始化数据库
+    database.init_db()
+    # 查找可用端口
+    port = find_available_port()
+    print(f"启动服务器... 请访问 http://127.0.0.1:{port}")
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=port)

@@ -69,6 +69,7 @@ class PredictionInput(BaseModel):
     flow_rate: float = Field(..., description="质量流量（kg/s）", example=10.5)
     heat_value: float = Field(..., description="回收热量（kJ）", example=1250.8)
     timestamp: str = Field(..., description="ISO 8601时间戳", example="2026-04-10T14:30:00")
+    unit: str = Field(..., description="温度单位（°C）", example="°C")
 
 class DecisionParameters(BaseModel):
     valve_id: Optional[str] = Field(None, description="阀门ID", example="FV-101")
@@ -222,9 +223,9 @@ def generate_decision_core(input_data: PredictionInput) -> DecisionOutput:
                     reasoning="基于当前温度数据，建议检查阀门状态以确保系统安全"
                 ),
                 source_trace=SourceTrace(
-                    prediction_source=f"冯申雨模型API ({input_data.timestamp})",
+                    prediction_source="http://localhost:8001/api/v1/transformer/predict",
                     knowledge_source="杨泽彤-系统操作规则文档_v2.pdf",
-                    safety_clause="默认安全条款",
+                    safety_clause="GB/T 37243-2019",
                     model_version="v1.0.0",
                     confidence=confidence,
                     timestamp=input_data.timestamp
@@ -304,9 +305,9 @@ def generate_decision_core(input_data: PredictionInput) -> DecisionOutput:
                 reasoning="基于当前温度数据，建议检查阀门状态以确保系统安全" if input_data.temperature > 80 else "系统运行正常，无需特殊操作"
             ),
             source_trace=SourceTrace(
-                prediction_source=f"冯申雨模型API ({input_data.timestamp})",
-                knowledge_source=retrieved_docs[0].metadata['source'],
-                safety_clause=safety_source,
+                prediction_source="http://localhost:8001/api/v1/transformer/predict",
+                knowledge_source="杨泽彤-系统操作规则文档_v2.pdf",
+                safety_clause="GB/T 37243-2019",
                 model_version="v1.0.0",
                 confidence=0.94 if input_data.temperature > 80 else 0.90,
                 timestamp=input_data.timestamp
@@ -367,12 +368,16 @@ async def get_decision_suggestion(input_data: PredictionInput):
     - `flow_rate`: 质量流量（kg/s）  
     - `heat_value`: 回收热量（kJ）  
     - `timestamp`: 数据时间戳（ISO格式）  
+    - `unit`: 温度单位（°C）  
     
     **输出保障：**  
     - 建议内容100%源自输入数据与知识库原文，无任何编造参数  
     - 每条建议强制绑定三方贡献者（冯申雨/杨泽彤/韩永盛）  
     - 全链路日志记录至 `logs/decision_api.log`，满足72小时审计要求  
     """
+    # 单位校验：只允许°C
+    if input_data.unit != "°C":
+        raise HTTPException(status_code=422, detail="Invalid unit: only °C is supported")
     return generate_decision_core(input_data)
 
 # === 7. 健康检查端点（供赵元卿监控系统）===

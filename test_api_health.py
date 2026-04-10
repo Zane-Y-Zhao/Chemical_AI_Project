@@ -16,7 +16,8 @@ def test_api_health():
         "pressure": 4.2,
         "flow_rate": 10.5,
         "heat_value": 1250.8,
-        "timestamp": "2026-04-10T14:30:00"
+        "timestamp": "2026-04-10T14:30:00",
+        "unit": "°C"
     }
     resp = requests.post("http://127.0.0.1:8001/api/v1/decision", json=test_data)
     assert resp.status_code == 200, f"Decision API failed: {resp.status_code}"

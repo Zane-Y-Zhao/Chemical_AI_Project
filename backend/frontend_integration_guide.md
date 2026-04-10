@@ -53,21 +53,24 @@ http://localhost:8001/api/v1/decision
 ```json
 {
   "status": "success",
+  "suggestion": "【智能建议】检测到温度升高，建议立即检查FV-101阀门状态，并确认管道温度是否超过安全限值。",
   "decision": {
-    "action": "adjust_parameters",
+    "action": "check_equipment",
     "parameters": {
-      "temperature_setpoint": 82.0,
-      "pressure_setpoint": 4.0,
-      "flow_rate_setpoint": 11.0
+      "valve_id": "FV-101",
+      "temperature_threshold": 90.0
     },
-    "reasoning": "基于当前温度和压力数据，建议调整参数以提高系统效率"
+    "reasoning": "基于当前温度数据，建议检查阀门状态以确保系统安全"
   },
   "source_trace": {
+    "prediction_source": "冯申雨模型API (2026-04-10T14:30:00)",
+    "knowledge_source": "杨泽彤-系统操作规则文档_v2.pdf",
+    "safety_clause": "默认安全条款",
     "model_version": "v1.0.0",
-    "knowledge_base": "化工安全操作规程_2025版",
-    "confidence": 0.92,
+    "confidence": 0.94,
     "timestamp": "2026-04-10T14:30:05"
-  }
+  },
+  "execution_time_ms": 2340.5
 }
 ```
 
@@ -75,16 +78,20 @@ http://localhost:8001/api/v1/decision
 
 | 字段名 | 类型 | 说明 |
 |-------|------|------|
-| status | string | 响应状态（success/failure） |
+| status | string | 响应状态（success/failure/warning） |
+| suggestion | string | 生成的操作建议 |
 | decision | object | 智能体决策结果 |
 | decision.action | string | 建议的操作类型 |
 | decision.parameters | object | 建议的参数设置 |
 | decision.reasoning | string | 决策理由 |
 | source_trace | object | 决策来源追踪信息（**必须在前端界面展示**） |
+| source_trace.prediction_source | string | 预测来源 |
+| source_trace.knowledge_source | string | 知识库来源 |
+| source_trace.safety_clause | string | 安全条款 |
 | source_trace.model_version | string | 模型版本 |
-| source_trace.knowledge_base | string | 知识库来源 |
 | source_trace.confidence | number | 决策置信度 |
 | source_trace.timestamp | string | 决策时间戳 |
+| execution_time_ms | number | 端到端处理耗时（毫秒） |
 
 ### 2.6 错误响应
 
@@ -93,8 +100,21 @@ http://localhost:8001/api/v1/decision
 ```json
 {
   "status": "failure",
-  "error": "Invalid input parameters",
-  "message": "Temperature must be greater than 0"
+  "suggestion": "决策生成失败：参数错误",
+  "decision": {
+    "action": "error",
+    "parameters": null,
+    "reasoning": "系统遇到异常：参数错误"
+  },
+  "source_trace": {
+    "prediction_source": "系统内部错误",
+    "knowledge_source": "系统内部错误",
+    "safety_clause": "系统内部错误",
+    "model_version": "v1.0.0",
+    "confidence": 0.0,
+    "timestamp": "2026-04-10T14:30:00"
+  },
+  "execution_time_ms": 0.0
 }
 ```
 
@@ -125,19 +145,23 @@ async function getDecision(data) {
 ### 3.2 响应处理
 
 1. **成功响应**：
+   - 解析 `suggestion` 字段，在界面上展示操作建议
    - 解析 `decision` 字段，根据 `action` 和 `parameters` 执行相应操作
    - 解析 `source_trace` 字段，在界面上展示决策来源信息
 
 2. **错误响应**：
    - 捕获并处理错误，在界面上显示错误信息
+   - 解析 `status` 字段，根据不同状态显示不同的错误提示
 
 ### 3.3 界面展示
 
 前端应在界面上专门设置一个区域，展示智能体决策的溯源信息，包括：
-- 模型版本
-- 知识库来源
-- 决策置信度
-- 决策时间
+- 预测来源（prediction_source）
+- 知识库来源（knowledge_source）
+- 安全条款（safety_clause）
+- 模型版本（model_version）
+- 决策置信度（confidence）
+- 决策时间（timestamp）
 
 ## 4. 本地开发环境
 
@@ -162,6 +186,7 @@ async function getDecision(data) {
 | 版本 | 日期 | 变更内容 |
 |------|------|----------|
 | 1.0 | 2026-04-10 | 初始版本 |
+| 1.1 | 2026-04-10 | 统一接口规范，添加suggestion字段和扩展source_trace字段 |
 
 ## 7. 联系方式
 

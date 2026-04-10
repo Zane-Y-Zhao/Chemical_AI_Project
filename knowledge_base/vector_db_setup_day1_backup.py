@@ -35,9 +35,11 @@ collection.add(
 )
 
 # 6. 测试检索
+print("开始测试检索...")
 results = collection.query(
     query_texts=["阀门关闭条件是什么？"],
     n_results=1
 )
+print("检索结果:", results)
 print("✅ 检索结果:", results['documents'][0][0][:50] + "...")  # 打印前50字符
 print(f"🎯 数据库已存入 {len(documents)} 个文档片段")

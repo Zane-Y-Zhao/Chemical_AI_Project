@@ -157,6 +157,83 @@ async function getDecision(data) {
 
 在生产环境中，API地址可能会有所不同，应根据实际部署情况进行调整。
 
+## 5. 其他数据接口
+
+### 5.1 KPI数据接口
+- **API地址**: `http://localhost:8000/api/v1/kpi`
+- **请求方法**: GET
+- **响应体格式**:
+```json
+{
+  "temperature": 85.5,
+  "pressure": 4.2,
+  "heatRecovery": 1250.8,
+  "energyConsumption": 15.6,
+  "efficiency": 85.2,
+  "predictions": {
+    "temperature": 86.2,
+    "pressure": 4.3,
+    "heatRecovery": 1280.5,
+    "energyConsumption": 15.8,
+    "efficiency": 84.5
+  }
+}
+```
+
+### 5.2 趋势数据接口
+- **API地址**: `http://localhost:8000/api/v1/trends`
+- **请求方法**: GET
+- **响应体格式**:
+```json
+{
+  "labels": ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"],
+  "datasets": {
+    "temperature": [78, 82, 85, 88, 86, 85],
+    "pressure": [3.8, 4.0, 4.2, 4.5, 4.3, 4.2],
+    "heatRecovery": [1100, 1150, 1200, 1280, 1260, 1250]
+  }
+}
+```
+
+### 5.3 设备状态接口
+- **API地址**: `http://localhost:8000/api/v1/equipment`
+- **请求方法**: GET
+- **响应体格式**:
+```json
+[
+  {
+    "id": 1,
+    "name": "换热器1",
+    "status": "normal",
+    "statusText": "正常",
+    "health": 95
+  },
+  {
+    "id": 2,
+    "name": "换热器2",
+    "status": "warning",
+    "statusText": "需要维护",
+    "health": 75
+  }
+]
+```
+
+### 5.4 预警信息接口
+- **API地址**: `http://localhost:8000/api/v1/alerts`
+- **请求方法**: GET
+- **响应体格式**:
+```json
+[
+  {
+    "id": 1,
+    "title": "温度预警",
+    "message": "高温端温度即将超过阈值",
+    "time": "2026-04-10 14:30:22",
+    "level": "warning"
+  }
+]
+```
+
 ## 6. 版本控制
 
 | 版本 | 日期 | 变更内容 |

@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+﻿﻿# -*- coding: utf-8 -*-
 """
 主程序 - main.py (修正版)
 功能：后端服务器，接收数据，提供API，托管前端
@@ -127,10 +127,86 @@ async def read_index():
 
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
+
+# --- 9. 新增API端点 --- 
+
+# KPI数据API
+@app.get("/api/v1/kpi")
+async def get_kpi_data():
+    """获取KPI数据"""
+    return {
+        "temperature": 85.5,
+        "pressure": 4.2,
+        "heatRecovery": 1250.8,
+        "energySaving": 320.5,
+        "temperaturePrediction": 87.2,
+        "pressurePrediction": 4.1,
+        "heatRecoveryPrediction": 1280.5,
+        "energySavingPrediction": 340.2
+    }
+
+# 趋势数据API
+@app.get("/api/v1/trends")
+async def get_trend_data(days: int = 7):
+    """获取趋势数据"""
+    return {
+        "labels": ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+        "temperature": [78, 82, 85, 88, 86, 84, 80],
+        "pressure": [3.8, 4.0, 4.2, 4.3, 4.2, 4.1, 4.0],
+        "heatRecovery": [1100, 1150, 1200, 1250, 1230, 1210, 1180]
+    }
+
+# 设备状态API
+@app.get("/api/v1/equipment")
+async def get_equipment_status():
+    """获取设备状态"""
+    return [
+        {"id": 1, "name": "换热器1", "status": "normal", "health": 95},
+        {"id": 2, "name": "换热器2", "status": "warning", "health": 75},
+        {"id": 3, "name": "泵1", "status": "normal", "health": 90},
+        {"id": 4, "name": "阀门1", "status": "normal", "health": 85}
+    ]
+
+# 预警信息API
+@app.get("/api/v1/alerts")
+async def get_alerts():
+    """获取预警信息"""
+    return [
+        {
+            "id": 1,
+            "level": "warning",
+            "message": "换热器2需要维护",
+            "time": datetime.now().strftime("%H:%M:%S")
+        },
+        {
+            "id": 2,
+            "level": "info",
+            "message": "系统运行正常",
+            "time": datetime.now().strftime("%H:%M:%S")
+        }
+    ]
+
+# 决策API
+@app.post("/api/v1/decision")
+async def get_decision_advice():
+    """获取决策建议"""
+    return {
+        "decision": {
+            "reasoning": "基于当前余热温度85.5°C和压力4.2MPa的分析，建议调整换热器1的运行参数，以提高余热回收率。根据历史数据分析，当前工况下调整换热器1的进水流量可以提升约15%的热回收效率。",
+            "source_trace": {
+                "data_sources": ["传感器数据", "历史运行数据"],
+                "model_used": "LSTM预测模型",
+                "confidence": "0.92",
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+    }
 # 挂载前端静态文件
 current_dir = os.path.dirname(os.path.abspath(__file__))
 frontend_dir = os.path.join(current_dir, "..", "frontend")
 app.mount("/js", StaticFiles(directory=os.path.join(frontend_dir, "js")), name="js")
+app.mount("/css", StaticFiles(directory=os.path.join(frontend_dir, "css")), name="css")
+app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dir, "assets")), name="assets")
 # --- 9. 启动命令 ---
 if __name__ == "__main__":
     # 初始化数据库

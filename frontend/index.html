@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>余热回收监控系统</title>
+    <!-- 引入 Vue 3 (用于简化界面操作) -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 引入 Axios (用于发送网络请求) -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- 引入一点简单的样式 -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background-color: #0056b3;
+            }
+
+        .result-box {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .result-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .history-item {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+            .history-item:last-child {
+                border-bottom: none;
+            }
+
+        .timestamp {
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="container">
+        <h1>🔥 余热回收计算器</h1>
+
+        <!-- 输入区域 -->
+        <div class="card">
+            <div class="form-group">
+                <label>高温端温度 (t1) °C</label>
+                <input type="number" v-model="form.temperature" placeholder="例如: 80">
+            </div>
+
+            <div class="form-group">
+                <label>低温端温度 (t2) °C</label>
+                <input type="number" v-model="form.temp_outlet" placeholder="例如: 70">
+            </div>
+
+            <div class="form-group">
+                <label>质量流量 (m) kg/s</label>
+                <input type="number" v-model="form.flow_rate" placeholder="例如: 10">
+            </div>
+
+            <div class="form-group">
+                <label>备注描述</label>
+                <input type="text" v-model="form.description" placeholder="选填">
+            </div>
+
+            <button @click="submitData" :disabled="loading">
+                {{ loading ? '计算中...' : '开始计算热量' }}
+            </button>
+
+            <!-- 实时结果显示 -->
+            <div class="result-box" v-if="lastResult">
+                <div>计算出的回收热量 (Q)</div>
+                <div class="result-value">{{ lastResult.heat_value }} kJ</div>
+                <div class="timestamp">{{ lastResult.timestamp }}</div>
+            </div>
+        </div>
+
+        <!-- 历史记录区域 -->
+        <div class="card">
+            <h3>最近计算记录</h3>
+            <div v-if="history.length === 0" style="color: #999; text-align: center;">暂无数据</div>
+
+            <div v-for="item in history" :key="item.id" class="history-item">
+                <div>
+                    <strong>ΔT: {{ item.temperature - item.temp_outlet }}°C</strong>
+                    (流量: {{ item.flow_rate }})
+                </div>
+                <div style="text-align: right;">
+                    <span style="color: #28a745; font-weight: bold;">{{ item.heat_value }} kJ</span><br>
+                    <span class="timestamp">{{ item.timestamp }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+        data() {
+        return {
+        loading: false,
+        lastResult: null,
+        history: [],
+        // 表单数据模型
+        form: {
+        temperature: '',
+        temp_outlet: '',
+        flow_rate: '',
+        description: '前端测试数据'
+        }
+        }
+        },
+        mounted() {
+        // 页面加载时自动获取历史记录
+        this.fetchHistory()
+        },
+        methods: {
+        // 发送数据到后端
+        async submitData() {
+        if (!this.form.temperature || !this.form.temp_outlet || !this.form.flow_rate) {
+        alert("请填写完整的温度和流量数据！")
+        return
+        }
+
+        this.loading = true
+        try {
+        // 发送 POST 请求到 FastAPI
+        const response = await axios.post('http://127.0.0.1:8000/api/v1/data', this.form)
+
+        // 成功后更新界面
+        this.lastResult = response.data
+        this.fetchHistory() // 刷新列表
+
+        // 简单的成功提示
+        alert(`计算成功！回收热量: ${response.data.heat_value} kJ`)
+
+        } catch (error) {
+        console.error(error)
+        alert("连接后端失败，请确保 Python 后端正在运行！")
+        } finally {
+        this.loading = false
+        }
+        },
+
+        // 从后端获取历史记录
+        async fetchHistory() {
+        try {
+        const response = await axios.get('http://127.0.0.1:8000/api/v1/data')
+        this.history = response.data
+        } catch (error) {
+        console.error("获取历史数据失败", error)
+        }
+        }
+        }
+        }).mount('#app')
+    </script>
+
+</body>
+</html>

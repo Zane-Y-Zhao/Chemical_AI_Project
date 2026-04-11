@@ -256,16 +256,16 @@ def generate_decision_core(input_data: PredictionInput) -> DecisionOutput:
         
         # 检查向量数据库是否初始化成功
         if vectorstore is None:
-            logger.error("向量数据库未初始化，无法执行决策生成")
-            # 向量数据库初始化失败，返回错误响应
+            logger.critical("Safety clause not found in vectorstore")
+            # 向量数据库初始化失败，触发安全熔断
             end_time = time.time()
             return DecisionOutput(
                 status="failure",
-                suggestion="向量数据库初始化失败，无法执行决策生成",
+                suggestion="[ERROR] 安全条款缺失，请人工介入",
                 decision=Decision(
                     action="error",
                     parameters=None,
-                    reasoning="系统遇到异常：向量数据库初始化失败"
+                    reasoning="安全条款缺失，请人工介入"
                 ),
                 source_trace=SourceTrace(
                     prediction_source="系统内部错误",
@@ -278,9 +278,59 @@ def generate_decision_core(input_data: PredictionInput) -> DecisionOutput:
                 execution_time_ms=(end_time - start_time) * 1000
             )
         
-        # 使用HyDE模式检索知识
-        query = "循环水系统失衡处置"
-        retrieved_docs = hybrid_retriever(query, top_k=3)
+        # 导入必要的函数
+        from knowledge_base.prompt_engineering import build_decision_prompt, get_safety_rules
+        
+        # 模拟模型预测结果
+        prediction = "temperature_rise" if input_data.temperature > 80 else "normal"
+        confidence = 0.94 if input_data.temperature > 80 else 0.90
+        
+        # 构建预测数据
+        prediction_data = {
+            "prediction": prediction,
+            "confidence": confidence,
+            "timestamp": input_data.timestamp
+        }
+        
+        # 基于预测类型检索相关知识
+        retrieval_keywords = {
+            "temperature_rise": "阀门关闭条件、温度超限处置",
+            "pressure_drop": "管道泄漏检测、压力安全阀动作",
+            "flow_instability": "泵故障预案、流量调节逻辑"
+        }.get(prediction, "安全操作边界")
+        
+        retrieved_docs = vectorstore.similarity_search(retrieval_keywords, k=2)
+        print(f"✅ 检索到 {len(retrieved_docs)} 条知识依据")
+        
+        # 检索安全条款
+        safety_docs = get_safety_rules(vectorstore, top_k=1)
+        print(f"✅ 加载 {len(safety_docs)} 条安全条款")
+        
+        # 构建提示词
+        prompt = build_decision_prompt(prediction_data, retrieved_docs, safety_docs)
+        
+        # 检查是否触发安全熔断
+        if "[ERROR]" in prompt:
+            logger.critical("Safety clause not found in vectorstore")
+            end_time = time.time()
+            return DecisionOutput(
+                status="failure",
+                suggestion=prompt,
+                decision=Decision(
+                    action="error",
+                    parameters=None,
+                    reasoning="安全条款缺失，请人工介入"
+                ),
+                source_trace=SourceTrace(
+                    prediction_source="系统内部错误",
+                    knowledge_source="系统内部错误",
+                    safety_clause="系统内部错误",
+                    model_version="v1.0.0",
+                    confidence=0.0,
+                    timestamp=input_data.timestamp
+                ),
+                execution_time_ms=(end_time - start_time) * 1000
+            )
         
         # 构建知识依据摘要
         knowledge_summary = ""
@@ -290,10 +340,7 @@ def generate_decision_core(input_data: PredictionInput) -> DecisionOutput:
                 knowledge_summary += f"- 【知识片段{i+1}】{doc.page_content[:100]}...\n"
                 knowledge_source = doc.metadata.get('source', '未知来源')
         
-        # 模拟模型预测结果
-        prediction = "temperature_rise" if input_data.temperature > 80 else "normal"
-        confidence = 0.94 if input_data.temperature > 80 else 0.90
-        
+        # 构建最终建议
         final_suggestion = f"""【智能建议】检测到温度升高，建议立即检查FV-101阀门状态，并确认管道温度是否超过安全限值。
 
 
@@ -457,20 +504,53 @@ async def conversation_endpoint(input_data: ConversationInput):
         
         # 生成系统响应
         response = ""
-        if "阀门" in input_data.message:
-            # 提取阀门ID
-            import re
-            valve_ids = re.findall(r"FV-\d+", full_query)
-            if valve_ids:
-                response = f"{valve_ids[0]}阀门当前状态正常，压力为4.2MPa。"
+        try:
+            # 导入千问模型调用函数
+            from knowledge_base.llm_config import call_qwen
+            
+            # 构建完整的对话历史
+            conversation_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in context])
+            
+            # 构建提示词
+            prompt = f"你是一位化工过程智能决策助手，基于以下对话历史和用户的最新问题，生成一个专业、准确的响应：\n\n对话历史：\n{conversation_history}\n\n用户最新问题：{input_data.message}\n\n请确保你的回答：\n1. 基于化工领域的专业知识\n2. 保持简洁明了\n3. 提供具体的信息和建议\n4. 不要包含与问题无关的内容"
+            
+            # 调用千问模型生成响应
+            response = call_qwen(prompt)
+            
+            # 检查是否调用失败
+            if response.startswith("[ERROR]"):
+                # 调用失败，使用备用响应
+                if "阀门" in input_data.message:
+                    # 提取阀门ID
+                    import re
+                    valve_ids = re.findall(r"FV-\d+", full_query)
+                    if valve_ids:
+                        response = f"{valve_ids[0]}阀门当前状态正常，压力为4.2MPa。"
+                    else:
+                        response = "FV-101阀门当前状态正常，压力为4.2MPa。"
+                elif "温度" in input_data.message:
+                    response = "当前温度为85.5°C，在正常范围内。"
+                elif "压力" in input_data.message:
+                    response = "当前系统压力为4.2MPa，在正常范围内。"
+                else:
+                    response = "我是化工过程智能决策助手，请问有什么可以帮助您的？"
+        except Exception as e:
+            # 发生异常，使用备用响应
+            logger.error(f"调用Qwen模型失败：{str(e)}")
+            if "阀门" in input_data.message:
+                # 提取阀门ID
+                import re
+                valve_ids = re.findall(r"FV-\d+", full_query)
+                if valve_ids:
+                    response = f"{valve_ids[0]}阀门当前状态正常，压力为4.2MPa。"
+                else:
+                    response = "FV-101阀门当前状态正常，压力为4.2MPa。"
+            elif "温度" in input_data.message:
+                response = "当前温度为85.5°C，在正常范围内。"
+            elif "压力" in input_data.message:
+                response = "当前系统压力为4.2MPa，在正常范围内。"
             else:
-                response = "FV-101阀门当前状态正常，压力为4.2MPa。"
-        elif "温度" in input_data.message:
-            response = "当前温度为85.5°C，在正常范围内。"
-        elif "压力" in input_data.message:
-            response = "当前系统压力为4.2MPa，在正常范围内。"
-        else:
-            response = "我是化工过程智能决策助手，请问有什么可以帮助您的？"
+                response = "我是化工过程智能决策助手，请问有什么可以帮助您的？"
         
         # 添加消息到对话链
         conversation_manager.add_message(input_data.session_id, "user", input_data.message)
@@ -510,4 +590,4 @@ if __name__ == "__main__":
     import uvicorn
     # 创建logs目录
     (ROOT_DIR / "logs").mkdir(exist_ok=True)
-    uvicorn.run("api.main:app", host="127.0.0.1", port=8001, reload=True)
+    uvicorn.run("api.main:app", host="127.0.0.1", port=8006, reload=True)

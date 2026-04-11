@@ -108,7 +108,7 @@ export class DashboardView {
                                 <div class="conversation-container">
                                     <div class="conversation-history" id="conversationHistory"></div>
                                     <div class="conversation-input">
-                                        <input type="text" id="messageInput" placeholder="请输入您的问题..." />
+                                        <input type="text" id="messageInput" placeholder="请输入您的问题..." onkeypress="if(event.key === 'Enter') dashboard.sendMessage()" />
                                         <button class="action-btn execute" onclick="dashboard.sendMessage()">发送</button>
                                     </div>
                                 </div>

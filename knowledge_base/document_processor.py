@@ -72,7 +72,7 @@ def extract_from_excel(excel_path: Path) -> str:
                     fault_col = col
                 elif "原因分析" in str(col) or "原因" in col_lower:
                     reason_col = col
-                elif "处置步骤" in str(col) or "处置" in col_lower or "步骤" in col_lower:
+                elif "处理措施" in str(col) or "处置" in col_lower or "步骤" in col_lower or "措施" in col_lower:
                     action_col = col
             
             # 如果找到所需列，按行提取语义块

@@ -1,4 +1,4 @@
-﻿﻿from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

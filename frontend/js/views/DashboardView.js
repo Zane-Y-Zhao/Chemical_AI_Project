@@ -5,6 +5,7 @@
 
 import { getKpiData, getTrendData, getEquipmentStatus, getAlerts } from '../api/dataClient.js';
 import { getDecisionAdvice, executeDecision, ignoreDecision } from '../api/decisionClient.js';
+import { sendMessage } from '../api/conversationClient.js';
 
 export class DashboardView {
     constructor(container) {
@@ -14,6 +15,8 @@ export class DashboardView {
         this.equipmentList = [];
         this.alerts = [];
         this.recommendations = [];
+        this.sessionId = 'session_' + Date.now();
+        this.conversationHistory = [];
         this.init();
     }
 
@@ -75,7 +78,7 @@ export class DashboardView {
                         </div>
                     </div>
 
-                    <!-- 右侧面板 - 预警和建议 -->
+                    <!-- 右侧面板 - 预警、建议和会话管理 -->
                     <div class="right-panel">
                         <!-- 预警信息 -->
                         <div class="right-top">
@@ -86,7 +89,7 @@ export class DashboardView {
                         </div>
                         
                         <!-- 智能操作建议 -->
-                        <div class="right-bottom">
+                        <div class="right-middle">
                             <div class="card">
                                 <h2>智能操作建议</h2>
                                 <div class="recommendation-list" id="recommendationList"></div>
@@ -94,6 +97,25 @@ export class DashboardView {
                                     <h4>溯源依据</h4>
                                     <div class="source-trace-content" id="sourceTraceContent"></div>
                                     <button class="action-btn close" onclick="document.getElementById('sourceTrace').style.display = 'none'">关闭</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 会话管理 -->
+                        <div class="right-bottom">
+                            <div class="card">
+                                <h2>智能助手</h2>
+                                <div class="conversation-container">
+                                    <div class="conversation-history" id="conversationHistory"></div>
+                                    <div class="conversation-input">
+                                        <input type="text" id="messageInput" placeholder="请输入您的问题..." />
+                                        <button class="action-btn execute" onclick="dashboard.sendMessage()">发送</button>
+                                    </div>
+                                </div>
+                                <div class="context-trace" id="contextTrace" style="display: none;">
+                                    <h4>操作依据</h4>
+                                    <div class="context-trace-content" id="contextTraceContent"></div>
+                                    <button class="action-btn close" onclick="document.getElementById('contextTrace').style.display = 'none'">关闭</button>
                                 </div>
                             </div>
                         </div>
@@ -673,5 +695,74 @@ export class DashboardView {
             link.href = dataURL;
             link.click();
         }
+    }
+
+    /**
+     * 发送会话消息
+     */
+    async sendMessage() {
+        const inputElement = document.getElementById('messageInput');
+        const message = inputElement.value.trim();
+        if (!message) return;
+
+        // 清空输入框
+        inputElement.value = '';
+
+        // 添加用户消息到会话历史
+        this.conversationHistory.push({
+            role: 'user',
+            content: message
+        });
+        this.updateConversationHistory();
+
+        // 发送消息到API
+        try {
+            const response = await sendMessage(this.sessionId, message);
+            if (response.status === 'success') {
+                // 更新会话历史
+                this.conversationHistory = response.conversation;
+                this.updateConversationHistory();
+                
+                // 显示操作依据
+                this.showContextTrace(response.context_trace);
+            }
+        } catch (error) {
+            console.error('发送消息失败:', error);
+        }
+    }
+
+    /**
+     * 更新会话历史显示
+     */
+    updateConversationHistory() {
+        const historyElement = document.getElementById('conversationHistory');
+        if (!historyElement) return;
+
+        historyElement.innerHTML = '';
+
+        this.conversationHistory.forEach(message => {
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${message.role}`;
+            messageElement.innerHTML = `
+                <div class="message-content">${message.content}</div>
+            `;
+            historyElement.appendChild(messageElement);
+        });
+
+        // 滚动到底部
+        historyElement.scrollTop = historyElement.scrollHeight;
+    }
+
+    /**
+     * 显示操作依据
+     * @param {string} contextTrace - 操作依据
+     */
+    showContextTrace(contextTrace) {
+        const traceElement = document.getElementById('contextTrace');
+        const contentElement = document.getElementById('contextTraceContent');
+        if (!traceElement || !contentElement) return;
+
+        contentElement.textContent = contextTrace;
+        traceElement.style.display = 'block';
     }
 }

@@ -225,12 +225,24 @@
 }
 
 .right-top {
-    flex: 1;
+    flex: 0.8;
     display: flex;
     flex-direction: column;
 }
 
 .right-top .card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.right-middle {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.right-middle .card {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -246,6 +258,132 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+}
+
+/* 会话容器 */
+.conversation-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+/* 会话历史 */
+.conversation-history {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+}
+
+/* 消息样式 */
+.message {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    animation: messageFadeIn 0.3s ease;
+}
+
+@keyframes messageFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message.user {
+    align-self: flex-end;
+    background: rgba(96, 165, 250, 0.2);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    border-bottom-right-radius: 4px;
+}
+
+.message.assistant {
+    align-self: flex-start;
+    background: rgba(52, 211, 153, 0.2);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+    border-bottom-left-radius: 4px;
+}
+
+.message-content {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* 会话输入 */
+.conversation-input {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+}
+
+.conversation-input input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.conversation-input input:focus {
+    border-color: rgba(96, 165, 250, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.conversation-input input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.conversation-input .action-btn {
+    white-space: nowrap;
+    font-size: 12px;
+    padding: 10px 16px;
+    min-width: 80px;
+    text-align: center;
+}
+
+/* 上下文跟踪 */
+.context-trace {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
+    padding: 16px;
+    margin-top: 12px;
+}
+
+.context-trace h4 {
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+.context-trace-content {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Consolas', monospace;
+    font-size: 11px;
+    white-space: pre-wrap;
+    max-height: 120px;
+    overflow-y: auto;
 }
 
 /* 图表容器 */

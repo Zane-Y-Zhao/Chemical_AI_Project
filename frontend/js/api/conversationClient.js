@@ -3,7 +3,7 @@
  * 专门处理与 /api/v1/conversation 接口的交互
  */
 
-const API_BASE_URL = window.location.origin;
+const API_BASE_URL = 'http://127.0.0.1:8001';
 
 /**
  * 发送会话消息

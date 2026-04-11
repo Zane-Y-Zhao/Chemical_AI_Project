@@ -82,27 +82,119 @@ def build_rag_store():
     print("✅ RAG知识库构建完成")
     return vectorstore
 
-# 5. 检索测试函数（模拟用户提问）
-def test_retrieval(query: str, top_k: int = 3):
+# 5. HyDE（假设性文档嵌入）生成函数
+def generate_hypothetical_answer(query: str) -> str:
+    """生成假设性答案，用于HyDE技术"""
+    # 导入千问模型调用函数
+    from knowledge_base.llm_config import call_qwen
+    
+    # 定义生成假设答案的提示词
+    prompt = f"你是一位化工领域专家，基于以下问题生成一个详细的假设性答案：\n{query}"
+    
+    # 使用千问模型生成假设答案
+    try:
+        hypothetical_answer = call_qwen(prompt)
+        # 检查是否调用失败
+        if hypothetical_answer.startswith("[ERROR]"):
+            print(f"生成假设答案失败：{hypothetical_answer}")
+            return query  # 失败时返回原始查询
+        return hypothetical_answer
+    except Exception as e:
+        print(f"生成假设答案失败：{str(e)}")
+        return query  # 失败时返回原始查询
+
+# 6. HyDE检索函数
+def hyde_retriever(query: str, top_k: int = 3):
+    """使用HyDE技术进行检索"""
     vectorstore = Chroma(
         persist_directory=str(DB_PATH),
         embedding_function=embedding_func,
         collection_name="chem_knowledge_rag"
     )
     
-    results = vectorstore.similarity_search(query, k=top_k)
+    # 生成假设答案
+    hypothetical_answer = generate_hypothetical_answer(query)
+    print(f"\n🤔 假设答案：{hypothetical_answer[:100]}...")
+    
+    # 使用假设答案进行检索
+    results = vectorstore.similarity_search(hypothetical_answer, k=top_k)
     print(f"\n🔍 检索问题：'{query}'")
     print("="*60)
     for i, doc in enumerate(results, 1):
         print(f"[{i}] 来源：{doc.metadata['source']} | 内容：{doc.page_content[:80]}...")
     print("="*60)
+    
+    return results
+
+# 7. 混合检索模式函数
+def hybrid_retriever(query: str, top_k: int = 3):
+    """混合检索模式：高频查询用关键词检索，模糊查询启用HyDE+语义检索"""
+    # 定义高频查询关键词列表
+    high_frequency_queries = [
+        "temperature_rise", "temperature", "temp", "温度",
+        "pressure", "press", "压力", "pressur",
+        "flow", "流量", "flowrate",
+        "level", "液位", "level",
+        "valve", "阀门", "valv",
+        "pump", "泵", "pump"
+    ]
+    
+    # 定义模糊查询关键词列表
+    fuzzy_queries = [
+        "flow_instability", "flow instability", "流量不稳定",
+        "pressure_fluctuation", "pressure fluctuation", "压力波动",
+        "temperature_variation", "temperature variation", "温度变化",
+        "leakage", "泄漏", "leak",
+        "corrosion", "腐蚀", "corrode",
+        "abnormal", "异常", "anomaly"
+    ]
+    
+    vectorstore = Chroma(
+        persist_directory=str(DB_PATH),
+        embedding_function=embedding_func,
+        collection_name="chem_knowledge_rag"
+    )
+    
+    # 检查是否为高频查询
+    is_high_frequency = any(keyword.lower() in query.lower() for keyword in high_frequency_queries)
+    # 检查是否为模糊查询
+    is_fuzzy = any(keyword.lower() in query.lower() for keyword in fuzzy_queries)
+    
+    if is_high_frequency:
+        # 高频查询使用关键词检索
+        print("📊 使用关键词检索（高频查询）")
+        results = vectorstore.similarity_search(query, k=top_k)
+    elif is_fuzzy:
+        # 模糊查询使用HyDE+语义检索
+        print("🧠 使用HyDE+语义检索（模糊查询）")
+        results = hyde_retriever(query, top_k)
+    else:
+        # 其他查询默认使用语义检索
+        print("🔍 使用语义检索（默认）")
+        results = vectorstore.similarity_search(query, k=top_k)
+    
+    return results
+
+# 8. 检索测试函数（模拟用户提问）
+def test_retrieval(query: str, top_k: int = 3):
+    """测试混合检索模式"""
+    results = hybrid_retriever(query, top_k)
+    return results
 
 if __name__ == "__main__":
     # 构建知识库（首次运行耗时约2分钟）
     store = build_rag_store()
     
-    # 测试3类典型问题（覆盖规则、安全、参数）
+    # 测试混合检索模式
     test_questions = [
+        # 高频查询测试
+        "temperature_rise",
+        "压力",
+        "flow",
+        # 模糊查询测试
+        "flow_instability",
+        "压力波动",
+        # 普通查询测试
         "阀门FV-101在什么条件下必须关闭？",
         "高温管道外表面温度的安全上限是多少？",
         "余热回收的温度阈值设定为多少？"
@@ -111,6 +203,6 @@ if __name__ == "__main__":
     for q in test_questions:
         test_retrieval(q)
     
-    print("\n🚀 Day 2核心目标达成：知识库已基于真实化工规则构建，具备精准检索能力！")
+    print("\n🚀 核心目标达成：知识库已基于真实化工规则构建，具备混合检索能力！")
 
 

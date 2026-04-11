@@ -20,8 +20,3 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 响应式调整
-window.addEventListener('resize', function() {
-    // 这里可以添加响应式调整逻辑
-    console.log('窗口大小变化');
-});

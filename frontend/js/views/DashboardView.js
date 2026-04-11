@@ -31,7 +31,7 @@ export class DashboardView {
                     <h1>🏭 化工余热智能管理系统</h1>
                     <div class="header-actions">
                         <div class="tooltip">
-                            <button class="action-btn execute" onclick="dashboard.exportData('csv')">导出CSV</button>
+                            <button class="action-btn execute" onclick="dashboard.exportToCSV()">导出CSV</button>
                             <span class="tooltip-text">导出当前数据为CSV文件</span>
                         </div>
                     </div>
@@ -542,15 +542,7 @@ export class DashboardView {
         }, 5000);
     }
 
-    /**
-     * 导出数据为CSV文件
-     * @param {string} format - 导出格式
-     */
-    exportData(format) {
-        if (format === 'csv') {
-            this.exportToCSV();
-        }
-    }
+
 
     /**
      * 导出数据为CSV文件

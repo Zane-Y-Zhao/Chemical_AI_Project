@@ -55,6 +55,7 @@ def extract_from_excel(excel_path: Path) -> str:
         # 读取Excel文件的所有工作表
         xl_file = pd.ExcelFile(excel_path)
         full_text = ""
+        chunk_count = 0
         
         for sheet_name in xl_file.sheet_names:
             # 读取工作表
@@ -67,16 +68,22 @@ def extract_from_excel(excel_path: Path) -> str:
             action_col = None
             
             for col in columns:
-                col_lower = str(col).lower()
-                if "故障现象" in str(col) or "故障" in col_lower:
+                col_str = str(col)
+                col_lower = col_str.lower()
+                if "故障现象" in col_str or "故障" in col_lower:
                     fault_col = col
-                elif "原因分析" in str(col) or "原因" in col_lower:
+                elif "原因分析" in col_str or "原因" in col_lower:
                     reason_col = col
-                elif "处理措施" in str(col) or "处置" in col_lower or "步骤" in col_lower or "措施" in col_lower:
+                elif "处理措施" in col_str or "处置" in col_lower or "步骤" in col_lower or "措施" in col_lower:
                     action_col = col
             
             # 如果找到所需列，按行提取语义块
             if fault_col and reason_col and action_col:
+                print(f"在工作表 {sheet_name} 中找到所需列：")
+                print(f"  故障现象列：{fault_col}")
+                print(f"  原因分析列：{reason_col}")
+                print(f"  处置步骤列：{action_col}")
+                
                 for idx, row in df.iterrows():
                     fault = str(row.get(fault_col, ""))
                     reason = str(row.get(reason_col, ""))
@@ -87,13 +94,16 @@ def extract_from_excel(excel_path: Path) -> str:
                         # 构建语义块
                         chunk = f"故障现象：{fault}\n原因分析：{reason}\n处置步骤：{action}\n"
                         full_text += chunk
+                        chunk_count += 1
             else:
                 # 如果没有找到指定列，提取所有文本
+                print(f"在工作表 {sheet_name} 中未找到所需列，提取所有文本")
                 for col in df.columns:
                     for val in df[col].dropna():
                         if str(val).strip():
                             full_text += str(val) + "\n"
         
+        print(f"从Excel文件中提取了 {chunk_count} 个完整的故障案例语义块")
         return clean_text(full_text)
     except Exception as e:
         print(f"处理Excel文件失败：{str(e)}")
@@ -101,8 +111,8 @@ def extract_from_excel(excel_path: Path) -> str:
 
 def split_into_chunks(text: str, chunk_size: int = 300, overlap: int = 50) -> list:
     """按语义切分：优先在句号/分号/换行处分割，避免切断化工术语和带单位数值"""
-    # 定义带单位数值的模式，如 ΔP=0.3MPa, 温度=85°C 等
-    unit_pattern = r'[A-Za-zΔ]+\s*=\s*\d+(\.\d+)?[A-Za-z°]+'
+    # 定义带单位数值的模式，如 ΔP=0.3MPa, 温度=85°C, 0.3MPa 等
+    unit_pattern = r'[A-Za-zΔ]+\s*=\s*\d+(\.\d+)?[A-Za-z°]+|\d+(\.\d+)?[A-Za-z°]+'
     
     # 先标记带单位数值，避免被分割
     text = re.sub(unit_pattern, lambda m: m.group(0).replace(' ', '_SPACE_'), text)

@@ -499,8 +499,22 @@ async def conversation_endpoint(input_data: ConversationInput):
                             full_query = f"{input_data.message}（{valve_ids[0]}）"
                         break
         
-        # 构建知识依据（简化版，不使用向量数据库）
-        context_trace = "依据：杨泽彤-系统操作规则文档_v2.pdf第3.2条"
+        # 从知识库中检索相关知识
+        retrieved_docs = hybrid_retriever(full_query, top_k=3)
+        
+        # 构建知识依据
+        knowledge_summary = ""
+        knowledge_sources = set()
+        if retrieved_docs:
+            for i, doc in enumerate(retrieved_docs):
+                knowledge_summary += f"- 【知识片段{i+1}】{doc.page_content[:100]}...\n"
+                knowledge_sources.add(doc.metadata.get('source', '未知来源'))
+        
+        # 构建上下文追踪信息
+        if knowledge_sources:
+            context_trace = f"依据：{', '.join(knowledge_sources)}"
+        else:
+            context_trace = "依据：系统内部知识"
         
         # 生成系统响应
         response = ""
@@ -511,8 +525,8 @@ async def conversation_endpoint(input_data: ConversationInput):
             # 构建完整的对话历史
             conversation_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in context])
             
-            # 构建提示词
-            prompt = f"你是一位化工过程智能决策助手，基于以下对话历史和用户的最新问题，生成一个专业、准确的响应：\n\n对话历史：\n{conversation_history}\n\n用户最新问题：{input_data.message}\n\n请确保你的回答：\n1. 基于化工领域的专业知识\n2. 保持简洁明了\n3. 提供具体的信息和建议\n4. 不要包含与问题无关的内容"
+            # 构建提示词，包含检索到的知识
+            prompt = f"你是一位化工过程智能决策助手，基于以下对话历史、用户的最新问题和检索到的知识库信息，生成一个专业、准确的响应：\n\n对话历史：\n{conversation_history}\n\n用户最新问题：{input_data.message}\n\n知识库信息：\n{knowledge_summary}\n\n请确保你的回答：\n1. 基于化工领域的专业知识和检索到的知识库信息\n2. 保持简洁明了\n3. 提供具体的信息和建议\n4. 不要包含与问题无关的内容\n5. 引用知识库中的信息来支持你的回答"
             
             # 调用千问模型生成响应
             response = call_qwen(prompt)

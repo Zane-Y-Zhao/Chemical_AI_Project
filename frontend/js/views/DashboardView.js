@@ -1,5 +1,5 @@
 /**
- * 仪表盘视图组件
+ * 仪表盘视图组件 - 毛玻璃风格大屏版本
  * 整合所有子组件，形成完整的监控大屏
  */
 
@@ -28,8 +28,8 @@ export class DashboardView {
             <div class="dashboard">
                 <!-- 头部 -->
                 <div class="header">
-                    <h1>🏭 化工余热智能管理系统</h1>
-                    <div class="header-actions">
+                    <div class="header-left">
+                        <h1>化工余热智能管理系统</h1>
                         <div class="tooltip">
                             <button class="action-btn execute" onclick="dashboard.exportToCSV()">导出CSV</button>
                             <span class="tooltip-text">导出当前数据为CSV文件</span>
@@ -49,65 +49,78 @@ export class DashboardView {
                     </div>
                 </div>
 
-                <!-- 主要内容 -->
+                <!-- 主内容区 - 4列布局 -->
                 <div class="grid">
-                    <!-- 综合概览 -->
-                    <div class="overview card">
-                        <h2>📊 综合概览</h2>
-                        <div class="kpi-grid" id="kpiGrid"></div>
+                    <!-- 左侧列 - KPI概览 -->
+                    <div class="left-panel">
+                        <div class="card">
+                            <h2>综合概览</h2>
+                            <div class="kpi-grid" id="kpiGrid"></div>
+                        </div>
                     </div>
 
-                    <!-- 趋势分析 -->
-                    <div class="trends card">
-                        <div class="card-header">
-                            <h2>📈 趋势分析</h2>
-                            <div class="card-actions">
-                                <div class="tooltip">
-                                    <button class="action-btn view" onclick="dashboard.exportChart('trend')">导出图表</button>
-                                    <span class="tooltip-text">导出趋势分析图表为图片</span>
+                    <!-- 中间上方 - 趋势分析 -->
+                    <div class="center-top-panel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>趋势分析</h2>
+                                <div class="card-actions">
+                                    <div class="tooltip">
+                                        <button class="action-btn view" onclick="dashboard.exportChart('trend')">导出图表</button>
+                                        <span class="tooltip-text">导出趋势分析图表为图片</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container" id="trendChart"></div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧面板 - 预警和建议 -->
+                    <div class="right-panel">
+                        <!-- 预警信息 -->
+                        <div class="right-top">
+                            <div class="card">
+                                <h2>预警信息</h2>
+                                <div class="alert-list" id="alertList"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 智能操作建议 -->
+                        <div class="right-bottom">
+                            <div class="card">
+                                <h2>智能操作建议</h2>
+                                <div class="recommendation-list" id="recommendationList"></div>
+                                <div class="source-trace" id="sourceTrace" style="display: none;">
+                                    <h4>溯源依据</h4>
+                                    <div class="source-trace-content" id="sourceTraceContent"></div>
+                                    <button class="action-btn close" onclick="document.getElementById('sourceTrace').style.display = 'none'">关闭</button>
                                 </div>
                             </div>
                         </div>
-                        <div class="chart-container" id="trendChart"></div>
                     </div>
 
-                    <!-- 预警信息 -->
-                    <div class="alerts card">
-                        <h2>⚠️ 预警信息</h2>
-                        <div class="alert-list" id="alertList"></div>
-                    </div>
-
-                    <!-- 能耗分析 -->
-                    <div class="analysis card">
-                        <div class="card-header">
-                            <h2>📊 能耗分析</h2>
-                            <div class="card-actions">
-                                <div class="tooltip">
-                                    <button class="action-btn view" onclick="dashboard.exportChart('energy')">导出图表</button>
-                                    <span class="tooltip-text">导出能耗分析图表为图片</span>
+                    <!-- 中间下方左侧 - 能耗分析 -->
+                    <div class="center-bottom-left">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>能耗分析</h2>
+                                <div class="card-actions">
+                                    <div class="tooltip">
+                                        <button class="action-btn view" onclick="dashboard.exportChart('energy')">导出图表</button>
+                                        <span class="tooltip-text">导出能耗分析图表为图片</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="energy-chart" id="energyChart"></div>
-                    </div>
-
-                    <!-- 智能操作建议 -->
-                    <div class="recommendations card">
-                        <div class="card-header">
-                            <h2>💡 智能操作建议</h2>
-                        </div>
-                        <div class="recommendation-list" id="recommendationList"></div>
-                        <div class="source-trace" id="sourceTrace" style="display: none;">
-                            <h4>🔍 溯源依据</h4>
-                            <div class="source-trace-content" id="sourceTraceContent"></div>
-                            <button class="action-btn close" onclick="document.getElementById('sourceTrace').style.display = 'none'">关闭</button>
+                            <div class="energy-chart" id="energyChart"></div>
                         </div>
                     </div>
 
-                    <!-- 设备状态 -->
-                    <div class="equipment card">
-                        <h2>🏗️ 设备状态</h2>
-                        <div class="equipment-grid" id="equipmentGrid"></div>
+                    <!-- 中间下方右侧 - 设备状态 -->
+                    <div class="center-bottom-right">
+                        <div class="card">
+                            <h2>设备状态</h2>
+                            <div class="equipment-grid" id="equipmentGrid"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -156,7 +169,7 @@ export class DashboardView {
             card.className = 'kpi-card';
             card.innerHTML = `
                 <div class="kpi-label">${kpi.label}</div>
-                <div class="kpi-value">${kpi.value}${kpi.unit}</div>
+                <div class="kpi-value">${kpi.value}<span class="kpi-unit">${kpi.unit}</span></div>
                 <div class="kpi-prediction">预测: ${kpi.prediction}${kpi.unit}</div>
             `;
             grid.appendChild(card);
@@ -173,7 +186,7 @@ export class DashboardView {
         this.updateTrendChart();
 
         window.addEventListener('resize', () => {
-            this.trendChart.resize();
+            if (this.trendChart) this.trendChart.resize();
         });
     }
 
@@ -181,54 +194,71 @@ export class DashboardView {
         if (!this.trendChart || !this.trendData) return;
 
         const option = {
+            backgroundColor: 'transparent',
             tooltip: {
-                trigger: 'item',
-                triggerOn: 'mousemove|click',
-                axisPointer: {
-                    type: 'cross',
-                    snap: true,
-                    label: {
-                        backgroundColor: '#6a7985'
-                    }
-                },
-                formatter: function(params) {
-                    let unit = '';
-                    if (params.seriesName === '温度') unit = ' °C';
-                    else if (params.seriesName === '压力') unit = ' MPa';
-                    else if (params.seriesName === '回收热量') unit = ' kJ';
-                    return params.name + '<br/>' + params.marker + params.seriesName + ': ' + params.value + unit;
-                },
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                trigger: 'axis',
+                backgroundColor: 'rgba(30, 30, 50, 0.9)',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                borderWidth: 1,
                 textStyle: {
                     color: '#fff'
                 },
-                borderColor: '#1976D2',
-                borderWidth: 1
+                formatter: function(params) {
+                    let result = params[0].name + '<br/>';
+                    params.forEach(param => {
+                        let unit = '';
+                        if (param.seriesName === '温度') unit = ' °C';
+                        else if (param.seriesName === '压力') unit = ' MPa';
+                        else if (param.seriesName === '回收热量') unit = ' kJ';
+                        result += param.marker + param.seriesName + ': ' + param.value + unit + '<br/>';
+                    });
+                    return result;
+                }
             },
             legend: {
                 data: ['温度', '压力', '回收热量'],
                 textStyle: {
-                    color: '#333'
-                }
+                    color: 'rgba(255, 255, 255, 0.7)'
+                },
+                top: 0,
+                right: 0
             },
             grid: {
                 left: '3%',
                 right: '4%',
                 bottom: '3%',
+                top: '15%',
                 containLabel: true
             },
             xAxis: {
                 type: 'category',
                 boundaryGap: false,
                 data: this.trendData.labels,
+                axisLine: {
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.2)'
+                    }
+                },
                 axisLabel: {
-                    color: '#333'
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    fontSize: 11
                 }
             },
             yAxis: {
                 type: 'value',
+                axisLine: {
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.2)'
+                    }
+                },
                 axisLabel: {
-                    color: '#333'
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    fontSize: 11
+                },
+                splitLine: {
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
                 }
             },
             series: [
@@ -237,13 +267,19 @@ export class DashboardView {
                     type: 'line',
                     data: this.trendData.temperature,
                     smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    lineStyle: {
+                        color: '#60a5fa',
+                        width: 3
+                    },
                     itemStyle: {
-                        color: '#1976D2'
+                        color: '#60a5fa'
                     },
                     areaStyle: {
                         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: 'rgba(25, 118, 210, 0.3)' },
-                            { offset: 1, color: 'rgba(25, 118, 210, 0.1)' }
+                            { offset: 0, color: 'rgba(96, 165, 250, 0.4)' },
+                            { offset: 1, color: 'rgba(96, 165, 250, 0.05)' }
                         ])
                     }
                 },
@@ -252,13 +288,19 @@ export class DashboardView {
                     type: 'line',
                     data: this.trendData.pressure,
                     smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    lineStyle: {
+                        color: '#34d399',
+                        width: 3
+                    },
                     itemStyle: {
-                        color: '#2196F3'
+                        color: '#34d399'
                     },
                     areaStyle: {
                         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: 'rgba(33, 150, 243, 0.3)' },
-                            { offset: 1, color: 'rgba(33, 150, 243, 0.1)' }
+                            { offset: 0, color: 'rgba(52, 211, 153, 0.4)' },
+                            { offset: 1, color: 'rgba(52, 211, 153, 0.05)' }
                         ])
                     }
                 },
@@ -267,13 +309,19 @@ export class DashboardView {
                     type: 'line',
                     data: this.trendData.heatRecovery,
                     smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    lineStyle: {
+                        color: '#fbbf24',
+                        width: 3
+                    },
                     itemStyle: {
-                        color: '#64B5F6'
+                        color: '#fbbf24'
                     },
                     areaStyle: {
                         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: 'rgba(100, 181, 246, 0.3)' },
-                            { offset: 1, color: 'rgba(100, 181, 246, 0.1)' }
+                            { offset: 0, color: 'rgba(251, 191, 36, 0.4)' },
+                            { offset: 1, color: 'rgba(251, 191, 36, 0.05)' }
                         ])
                     }
                 }
@@ -294,7 +342,7 @@ export class DashboardView {
             card.className = `equipment-card ${equipment.status}`;
 
             let statusText = '正常';
-            if (equipment.status === 'warning') statusText = '需要维护';
+            if (equipment.status === 'warning') statusText = '维护';
             else if (equipment.status === 'error') statusText = '故障';
 
             card.innerHTML = `
@@ -424,7 +472,7 @@ export class DashboardView {
         this.updateEnergyChart();
 
         window.addEventListener('resize', () => {
-            this.energyChart.resize();
+            if (this.energyChart) this.energyChart.resize();
         });
     }
 
@@ -438,47 +486,62 @@ export class DashboardView {
         };
 
         const option = {
+            backgroundColor: 'transparent',
             tooltip: {
-                trigger: 'item',
-                triggerOn: 'mousemove|click',
-                axisPointer: {
-                    type: 'shadow',
-                    snap: true
-                },
-                formatter: function(params) {
-                    return params.name + '<br/>' + params.marker + params.seriesName + ': ' + params.value + ' kW';
-                },
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                trigger: 'axis',
+                backgroundColor: 'rgba(30, 30, 50, 0.9)',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                borderWidth: 1,
                 textStyle: {
                     color: '#fff'
                 },
-                borderColor: '#1976D2',
-                borderWidth: 1
+                axisPointer: {
+                    type: 'shadow'
+                }
             },
             legend: {
                 data: ['实际能耗', '节能目标'],
                 textStyle: {
-                    color: '#333'
-                }
+                    color: 'rgba(255, 255, 255, 0.7)'
+                },
+                top: 0,
+                right: 0
             },
             grid: {
                 left: '3%',
                 right: '4%',
                 bottom: '3%',
+                top: '15%',
                 containLabel: true
             },
             xAxis: {
                 type: 'category',
                 data: data.labels,
+                axisLine: {
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.2)'
+                    }
+                },
                 axisLabel: {
-                    color: '#333'
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    fontSize: 11
                 }
             },
             yAxis: {
                 type: 'value',
+                axisLine: {
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.2)'
+                    }
+                },
                 axisLabel: {
-                    color: '#333',
-                    formatter: '{value} kW'
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    fontSize: 11
+                },
+                splitLine: {
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
                 }
             },
             series: [
@@ -487,16 +550,26 @@ export class DashboardView {
                     type: 'bar',
                     data: data.actual,
                     itemStyle: {
-                        color: '#1976D2'
-                    }
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#60a5fa' },
+                            { offset: 1, color: '#3b82f6' }
+                        ])
+                    },
+                    barWidth: '30%',
+                    borderRadius: [4, 4, 0, 0]
                 },
                 {
                     name: '节能目标',
                     type: 'bar',
                     data: data.target,
                     itemStyle: {
-                        color: '#64B5F6'
-                    }
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#34d399' },
+                            { offset: 1, color: '#10b981' }
+                        ])
+                    },
+                    barWidth: '30%',
+                    borderRadius: [4, 4, 0, 0]
                 }
             ]
         };
@@ -542,13 +615,10 @@ export class DashboardView {
         }, 5000);
     }
 
-
-
     /**
      * 导出数据为CSV文件
      */
     exportToCSV() {
-        // 准备CSV数据
         let csvContent = "数据类型,当前值,预测值\n";
         
         if (this.kpiData) {
@@ -558,7 +628,6 @@ export class DashboardView {
             csvContent += `节能效果,${this.kpiData.energySaving},${this.kpiData.energySavingPrediction}\n`;
         }
 
-        // 添加趋势数据
         if (this.trendData) {
             csvContent += "\n时间,温度,压力,回收热量\n";
             for (let i = 0; i < this.trendData.labels.length; i++) {
@@ -566,7 +635,6 @@ export class DashboardView {
             }
         }
 
-        // 创建下载链接
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
@@ -595,13 +663,11 @@ export class DashboardView {
         }
 
         if (chart) {
-            // 使用ECharts的toBase64Image方法
             const dataURL = chart.getDataURL({
-                pixelRatio: 2, // 提高图片清晰度
-                backgroundColor: '#fff'
+                pixelRatio: 2,
+                backgroundColor: '#1a1a2e'
             });
 
-            // 创建下载链接
             const link = document.createElement('a');
             link.download = `${filename}_${new Date().toISOString().slice(0, 10)}.png`;
             link.href = dataURL;

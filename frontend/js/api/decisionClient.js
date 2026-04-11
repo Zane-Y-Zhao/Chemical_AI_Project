@@ -3,7 +3,7 @@
  * 专门处理与 /api/v1/decision 接口的交互
  */
 
-const API_BASE_URL = 'http://localhost:8002';
+const API_BASE_URL = window.location.origin;
 
 /**
  * 获取决策建议

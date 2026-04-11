@@ -3,7 +3,7 @@
  * 处理与其他数据接口的交互
  */
 
-const API_BASE_URL = 'http://localhost:8002';
+const API_BASE_URL = window.location.origin;
 
 /**
  * 获取KPI数据

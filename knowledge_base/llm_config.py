@@ -20,9 +20,10 @@ def call_qwen(prompt: str) -> str:
             model=MODEL_NAME,
             prompt=prompt,
             api_key=API_KEY,
-            temperature=0.3,  # 降低随机性，提升专业建议稳定性
-            max_tokens=1024,
-            timeout=10  # 设置10秒超时
+            temperature=0.5,  # 平衡保守性和灵活性
+            max_tokens=2048,  # 增加最大token数，支持更复杂的回答
+            top_p=0.9,  # 控制生成的多样性
+            timeout=15  # 增加超时时间，确保复杂问题有足够时间处理
         )
         end_time = time.time()
         print(f"[DEBUG] 大模型调用完成，耗时：{end_time - start_time:.2f}s")

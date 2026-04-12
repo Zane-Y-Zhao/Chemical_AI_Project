@@ -13,7 +13,7 @@ def build_decision_prompt(
     2. 降级路径（confidence<0.85）：从杨泽彤案例集直接提取处置步骤
     3. 安全熔断规则：若检索结果未包含安全操作规程，返回硬错误
     """
-    # 提取关键预测值（适配冯申雨API格式）
+    # 提取关键预测值（适配韩永盛API格式）
     pred_value = prediction_data.get("prediction", "unknown")
     confidence = prediction_data.get("confidence", 0.0)
     
@@ -22,59 +22,48 @@ def build_decision_prompt(
     if not safety_operation_included:
         return "[ERROR] 安全条款缺失，请人工介入"
     
-    # 构建知识依据摘要（避免长文本淹没关键信息）
+    # 构建知识依据摘要（摘要式呈现，避免长文本）
     knowledge_summary = "\n".join([
-        f"- 【规则{idx+1}】{doc.page_content[:60]}...（来源：{doc.metadata['source']}）"
+        f"- 【规则{idx+1}】{doc.page_content[:40]}...（来源：{doc.metadata['source']}）"
         for idx, doc in enumerate(retrieved_knowledge[:2])
     ])
     
     # 安全条款强制引用（来自杨泽彤安全规程）
-    safety_clause = safety_rules[0].page_content if safety_rules else "无安全条款提供"
+    safety_clause = safety_rules[0].page_content[:80] + "..." if safety_rules else "无安全条款提供"
     
     # 双路径决策逻辑
     if confidence >= 0.85:
         # 主路径：调用千问生成建议
-        system_prompt = f"""你是一名资深化工安全工程师，正在为余热回收系统生成操作建议。
-        必须严格遵守以下原则：
-        ① 所有建议必须基于以下【实时预测数据】和【知识库原文】；
-        ② 每条建议必须明确引用至少1条【安全条款】；
-        ③ 禁止编造任何未在输入中出现的参数、单位或逻辑关系。"""
+        system_prompt = "你是化工安全工程师，为余热回收系统生成操作建议，必须基于实时数据和知识库原文，引用安全条款，不编造参数。"
 
         human_prompt = f"""【实时预测数据】
-        - 预测类型：{pred_value}
-        - 置信度：{confidence:.2f}
-        - 时间戳：{prediction_data.get('timestamp', 'N/A')}
+- 预测类型：{pred_value}
+- 置信度：{confidence:.2f}
+- 时间戳：{prediction_data.get('timestamp', 'N/A')}
 
-        【知识库原文依据】
-        {knowledge_summary}
+【知识库原文依据】
+{knowledge_summary}
 
-        【强制引用的安全条款】
-        {safety_clause}
+【强制引用的安全条款】
+{safety_clause}
 
-        请生成一条具体、可执行、符合安全规范的操作建议（限100字内）："""
+请生成一条具体、可执行、符合安全规范的操作建议（限100字内）："""
     else:
         # 降级路径：从杨泽彤案例集直接提取处置步骤
-        # 同时包含千问建议与案例集原文
-        system_prompt = f"""你是一名资深化工安全工程师，正在为余热回收系统生成操作建议。
-        必须严格遵守以下原则：
-        ① 所有建议必须基于以下【实时预测数据】和【知识库原文】；
-        ② 每条建议必须明确引用至少1条【安全条款】；
-        ③ 由于置信度较低，必须标注"需人工复核"；
-        ④ 禁止编造任何未在输入中出现的参数、单位或逻辑关系；
-        ⑤ 响应必须同时包含千问建议与案例集原文。"""
+        system_prompt = "你是化工安全工程师，为余热回收系统生成操作建议，必须基于实时数据和知识库原文，引用安全条款，标注需人工复核，不编造参数。"
 
         human_prompt = f"""【实时预测数据】
-        - 预测类型：{pred_value}
-        - 置信度：{confidence:.2f}
-        - 时间戳：{prediction_data.get('timestamp', 'N/A')}
+- 预测类型：{pred_value}
+- 置信度：{confidence:.2f}
+- 时间戳：{prediction_data.get('timestamp', 'N/A')}
 
-        【知识库原文依据】
-        {knowledge_summary}
+【知识库原文依据】
+{knowledge_summary}
 
-        【强制引用的安全条款】
-        {safety_clause}
+【强制引用的安全条款】
+{safety_clause}
 
-        请生成一条具体、可执行、符合安全规范的操作建议，同时包含千问建议与案例集原文（限200字内）："""
+请生成一条具体、可执行、符合安全规范的操作建议（限200字内）："""
 
     prompt_template = ChatPromptTemplate.from_messages([
         SystemMessage(content=system_prompt),

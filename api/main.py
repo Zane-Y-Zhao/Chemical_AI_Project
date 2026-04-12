@@ -67,14 +67,12 @@ def init_vectorstore():
     """初始化向量数据库和BM25索引"""
     try:
         global embedding_func, vectorstore, bm25_index, documents
+        # 使用rag_pipeline中的缓存机制
+        from knowledge_base.rag_pipeline import get_vectorstore
+        vectorstore = get_vectorstore()
+        
         if embedding_func is None:
             embedding_func = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-        if vectorstore is None:
-            vectorstore = Chroma(
-                persist_directory=str(DB_PATH),
-                embedding_function=embedding_func,
-                collection_name="chem_knowledge_rag"
-            )
         
         # 初始化BM25索引
         if bm25_index is None or documents == []:
@@ -734,4 +732,21 @@ if __name__ == "__main__":
     import uvicorn
     # 创建logs目录
     (ROOT_DIR / "logs").mkdir(exist_ok=True)
+    
+    # 预热：加载向量库并执行1次空检索，触发内存缓存
+    print("Start system warm-up...")
+    try:
+        # 初始化向量数据库
+        vectorstore = init_vectorstore()
+        if vectorstore:
+            # 执行空检索，触发内存缓存
+            vectorstore.similarity_search("预热", k=1)
+            print("Vector store warm-up completed")
+        else:
+            print("Warning: Vector store initialization failed, skipping warm-up")
+    except Exception as e:
+        print(f"Warning: Warm-up failed: {str(e)}")
+    
+    # 启动服务
+    print("Starting FastAPI service...")
     uvicorn.run("main:app", host="127.0.0.1", port=8006, reload=True)

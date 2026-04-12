@@ -33,7 +33,7 @@ except Exception as e:
 
 # 初始化向量数据库
 try:
-    EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+    EMBEDDING_MODEL = "D:\\chem-ai-project\\Chemical_AI_Project\\all-MiniLM-L6-v2"
     logging.info(f"嵌入模型: {EMBEDDING_MODEL}")
     
     embedding_func = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)

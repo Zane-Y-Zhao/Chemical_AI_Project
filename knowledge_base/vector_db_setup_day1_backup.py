@@ -10,7 +10,7 @@ DB_PATH = ROOT_DIR / ".chroma_db"  # 向量数据库存储位置
 # 2. 初始化数据库
 client = chromadb.PersistentClient(path=str(DB_PATH))
 embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name="all-MiniLM-L6-v2"  # 自动下载模型
+    model_name="D:\\chem-ai-project\\Chemical_AI_Project\\all-MiniLM-L6-v2"  # 使用本地模型
 )
 
 # 3. 创建集合

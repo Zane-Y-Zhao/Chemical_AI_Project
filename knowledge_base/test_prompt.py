@@ -7,7 +7,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from knowledge_base.prompt_engineering import build_decision_prompt, get_safety_rules
 
 # 加载RAG库
-embedding_func = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+embedding_func = HuggingFaceEmbeddings(model_name="D:\\chem-ai-project\\Chemical_AI_Project\\all-MiniLM-L6-v2")
 vectorstore = Chroma(
     persist_directory=".chroma_db",
     embedding_function=embedding_func,

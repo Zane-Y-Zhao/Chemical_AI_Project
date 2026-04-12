@@ -25,7 +25,7 @@ except Exception as e:
 # 初始化向量数据库
 try:
     DB_PATH = ROOT_DIR / ".chroma_db"
-    EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+    EMBEDDING_MODEL = "D:\\chem-ai-project\\Chemical_AI_Project\\all-MiniLM-L6-v2"
     
     logging.info(f"向量数据库路径: {DB_PATH}")
     logging.info(f"嵌入模型: {EMBEDDING_MODEL}")

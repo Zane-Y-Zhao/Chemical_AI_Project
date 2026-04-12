@@ -12,7 +12,7 @@ from knowledge_base.prompt_engineering import build_decision_prompt, get_safety_
 
 # 初始化向量数据库
 DB_PATH = ROOT_DIR / ".chroma_db"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+EMBEDDING_MODEL = "D:\\chem-ai-project\\Chemical_AI_Project\\all-MiniLM-L6-v2"
 
 embedding_func = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 vectorstore = Chroma(

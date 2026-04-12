@@ -14,7 +14,7 @@ CLEANED_DIR = ROOT_DIR / "knowledge_base" / "docs_cleaned"
 
 # 初始化嵌入模型
 embedding_func = HuggingFaceEmbeddings(
-    model_name="all-MiniLM-L6-v2"
+    model_name="D:\\chem-ai-project\\Chemical_AI_Project\\all-MiniLM-L6-v2"
 )
 
 # 加载清洗后的知识片段

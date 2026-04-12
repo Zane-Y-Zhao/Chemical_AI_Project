@@ -33,7 +33,7 @@ logger = logging.getLogger("decision_api")
 
 # === 向量库配置 ===
 DB_PATH = ROOT_DIR / ".chroma_db"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+EMBEDDING_MODEL = r"d:\\chem-ai-project\\chemical_ai_project\\all-MiniLM-L6-v2"
 
 # 向量数据库和BM25全局变量
 embedding_func = None
@@ -68,21 +68,32 @@ def init_vectorstore():
     try:
         global embedding_func, vectorstore, bm25_index, documents
         # 使用rag_pipeline中的缓存机制
+        # 延迟导入，避免在模块级别导入时初始化嵌入模型
         from knowledge_base.rag_pipeline import get_vectorstore
         vectorstore = get_vectorstore()
         
-        if embedding_func is None:
-            embedding_func = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+        # embedding_func已经在rag_pipeline.py中初始化，不需要在这里再次初始化
+        # if embedding_func is None:
+        #     # 设置本地缓存路径，避免每次从远程加载
+        #     CACHE_DIR = os.path.join(ROOT_DIR, ".cache")
+        #     os.makedirs(CACHE_DIR, exist_ok=True)
+        #     embedding_func = HuggingFaceEmbeddings(
+        #         model_name=EMBEDDING_MODEL,
+        #         cache_folder=CACHE_DIR
+        #     )
         
         # 初始化BM25索引
         if bm25_index is None or documents == []:
             # 获取所有文档
-            documents = vectorstore.get()
-            if 'documents' in documents and len(documents['documents']) > 0:
-                # 预处理文档用于BM25
-                tokenized_docs = [re.sub(r'[^\w\s]', '', doc.lower()).split() for doc in documents['documents']]
-                bm25_index = BM25Okapi(tokenized_docs)
-                print(f"BM25索引初始化完成，包含{len(documents['documents'])}个文档")
+            if vectorstore is not None:
+                documents = vectorstore.get()
+                if 'documents' in documents and len(documents['documents']) > 0:
+                    # 预处理文档用于BM25
+                    tokenized_docs = [re.sub(r'[^\w\s]', '', doc.lower()).split() for doc in documents['documents']]
+                    bm25_index = BM25Okapi(tokenized_docs)
+                    print(f"BM25索引初始化完成，包含{len(documents['documents'])}个文档")
+            else:
+                print("向量数据库未初始化，无法构建BM25索引")
         
         return vectorstore
     except Exception as e:
@@ -737,16 +748,20 @@ if __name__ == "__main__":
     print("Start system warm-up...")
     try:
         # 初始化向量数据库
+        print("Initializing vector store...")
         vectorstore = init_vectorstore()
         if vectorstore:
             # 执行空检索，触发内存缓存
+            print("Performing warm-up search...")
             vectorstore.similarity_search("预热", k=1)
             print("Vector store warm-up completed")
         else:
             print("Warning: Vector store initialization failed, skipping warm-up")
     except Exception as e:
         print(f"Warning: Warm-up failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
     
     # 启动服务
     print("Starting FastAPI service...")
-    uvicorn.run("main:app", host="127.0.0.1", port=8006, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8006, reload=False)

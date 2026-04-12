@@ -13,8 +13,23 @@ const API_BASE_URL = 'http://127.0.0.1:8001';
  */
 export async function sendMessage(sessionId, message) {
     try {
-        // 直接返回模拟数据，避免API请求错误
-        return getMockConversationData(sessionId, message);
+        // 调用真实的API端点
+        const response = await fetch(`${API_BASE_URL}/api/v1/conversation`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: sessionId,
+                message: message
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API请求失败: ${response.status}`);
+        }
+        
+        return await response.json();
     } catch (error) {
         console.error('发送会话消息失败:', error);
         // 返回模拟数据，确保前端正常显示

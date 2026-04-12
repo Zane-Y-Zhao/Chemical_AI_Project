@@ -12,16 +12,33 @@ from knowledge_base.prompt_engineering import build_decision_prompt, get_safety_
 # 1. 配置（复用Day 1–2约定）
 ROOT_DIR = Path(__file__).parent.parent
 DB_PATH = ROOT_DIR / ".chroma_db"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+EMBEDDING_MODEL = r"d:\\chem-ai-project\\chemical_ai_project\\all-MiniLM-L6-v2"  # 本地嵌入模型路径
 PREDICTION_API_URL = "http://localhost:8000/docs"  # 赵元卿提供的模型服务地址
 
 # 2. 初始化组件
-embedding_func = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-vectorstore = Chroma(
-    persist_directory=str(DB_PATH),
-    embedding_function=embedding_func,
-    collection_name="chem_knowledge_rag"
-)
+embedding_func = None
+
+def init_embedding_func():
+    """初始化嵌入函数"""
+    global embedding_func
+    if embedding_func is None:
+        embedding_func = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+    return embedding_func
+# 向量数据库全局变量
+vectorstore = None
+
+def init_vectorstore():
+    """初始化向量数据库"""
+    global vectorstore
+    if vectorstore is None:
+        # 初始化嵌入函数
+        embedding_func = init_embedding_func()
+        vectorstore = Chroma(
+            persist_directory=str(DB_PATH),
+            embedding_function=embedding_func,
+            collection_name="chem_knowledge_rag"
+        )
+    return vectorstore
 
 # 3. 主函数：端到端决策生成
 def generate_decision_suggestion():
@@ -52,6 +69,8 @@ def generate_decision_suggestion():
         "flow_instability": "泵故障预案、流量调节逻辑"
     }.get(prediction_type, "安全操作边界")
 
+    # 初始化向量数据库
+    vectorstore = init_vectorstore()
     retrieved_docs = vectorstore.similarity_search(retrieval_keywords, k=2)
     print(f"✅ 检索到 {len(retrieved_docs)} 条知识依据")
 

@@ -18,16 +18,18 @@ function initLightEffect() {
     // 鼠标移动事件监听
     document.addEventListener('mousemove', (e) => {
         const { clientX, clientY } = e;
-        lightEffect.style.left = `${clientX - 150}px`;
-        lightEffect.style.top = `${clientY - 150}px`;
+        const half = 210;
+        lightEffect.style.left = `${clientX - half}px`;
+        lightEffect.style.top = `${clientY - half}px`;
     });
     
     // 触摸移动事件监听（移动设备）
     document.addEventListener('touchmove', (e) => {
         if (e.touches.length > 0) {
             const { clientX, clientY } = e.touches[0];
-            lightEffect.style.left = `${clientX - 150}px`;
-            lightEffect.style.top = `${clientY - 150}px`;
+            const half = 210;
+            lightEffect.style.left = `${clientX - half}px`;
+            lightEffect.style.top = `${clientY - half}px`;
         }
     });
 }

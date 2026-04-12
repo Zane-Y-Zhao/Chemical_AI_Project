@@ -69,6 +69,9 @@ def load_cleaned_chunks() -> List[Document]:
     logging.info(f"加载完成，总计 {len(docs)} 个知识片段")
     return docs
 
+# 全局向量库缓存
+vectorstore_cache = None
+
 # 4. 构建RAG向量库（持久化）
 def build_rag_store():
     logging.info("🔄 正在构建RAG知识库...")
@@ -89,7 +92,21 @@ def build_rag_store():
         logging.error(f"❌ 构建RAG知识库失败：{str(e)}")
         return None
 
-# 5. HyDE（假设性文档嵌入）生成函数
+# 5. 获取向量库实例（带缓存）
+def get_vectorstore():
+    """获取向量库实例，使用缓存避免重复加载"""
+    global vectorstore_cache
+    if vectorstore_cache is None:
+        logging.info("📦 加载向量库缓存...")
+        vectorstore_cache = Chroma(
+            persist_directory=str(DB_PATH),
+            embedding_function=embedding_func,
+            collection_name="chem_knowledge_rag"
+        )
+        logging.info("✅ 向量库缓存加载完成")
+    return vectorstore_cache
+
+# 6. HyDE（假设性文档嵌入）生成函数
 def generate_hypothetical_answer(query: str) -> str:
     """生成假设性答案，用于HyDE技术"""
     # 导入千问模型调用函数
@@ -110,14 +127,10 @@ def generate_hypothetical_answer(query: str) -> str:
         print(f"生成假设答案失败：{str(e)}")
         return query  # 失败时返回原始查询
 
-# 6. HyDE检索函数
+# 7. HyDE检索函数
 def hyde_retriever(query: str, top_k: int = 3):
     """使用HyDE技术进行检索"""
-    vectorstore = Chroma(
-        persist_directory=str(DB_PATH),
-        embedding_function=embedding_func,
-        collection_name="chem_knowledge_rag"
-    )
+    vectorstore = get_vectorstore()
     
     # 生成假设答案
     hypothetical_answer = generate_hypothetical_answer(query)
@@ -133,7 +146,7 @@ def hyde_retriever(query: str, top_k: int = 3):
     
     return results
 
-# 7. 混合检索模式函数
+# 8. 混合检索模式函数
 def hybrid_retriever(query: str, top_k: int = 3):
     """混合检索模式：高频查询用关键词检索，模糊查询启用HyDE+语义检索"""
     # 定义高频查询关键词列表
@@ -156,11 +169,7 @@ def hybrid_retriever(query: str, top_k: int = 3):
         "abnormal", "异常", "anomaly"
     ]
     
-    vectorstore = Chroma(
-        persist_directory=str(DB_PATH),
-        embedding_function=embedding_func,
-        collection_name="chem_knowledge_rag"
-    )
+    vectorstore = get_vectorstore()
     
     # 检查是否为高频查询
     is_high_frequency = any(keyword.lower() in query.lower() for keyword in high_frequency_queries)

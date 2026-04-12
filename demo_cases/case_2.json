@@ -1,0 +1,8 @@
+{
+  "temperature": 75.0,
+  "pressure": 4.0,
+  "flow_rate": 8.5,
+  "heat_value": 1100.0,
+  "timestamp": "2026-04-12T14:35:00",
+  "unit": "kg/h"
+}

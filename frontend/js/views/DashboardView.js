@@ -107,15 +107,15 @@ export class DashboardView {
                                 <h2>智能助手</h2>
                                 <div class="conversation-container">
                                     <div class="conversation-history" id="conversationHistory"></div>
+                                    <div class="context-trace" id="contextTrace" style="display: none;">
+                                        <h4>操作依据</h4>
+                                        <div class="context-trace-content" id="contextTraceContent"></div>
+                                        <button type="button" class="action-btn close context-trace__close" onclick="document.getElementById('contextTrace').style.display = 'none'">关闭</button>
+                                    </div>
                                     <div class="conversation-input">
                                         <input type="text" id="messageInput" placeholder="请输入您的问题..." onkeypress="if(event.key === 'Enter') dashboard.sendMessage()" />
                                         <button class="action-btn execute" onclick="dashboard.sendMessage()">发送</button>
                                     </div>
-                                </div>
-                                <div class="context-trace" id="contextTrace" style="display: none;">
-                                    <h4>操作依据</h4>
-                                    <div class="context-trace-content" id="contextTraceContent"></div>
-                                    <button class="action-btn close" onclick="document.getElementById('contextTrace').style.display = 'none'">关闭</button>
                                 </div>
                             </div>
                         </div>
@@ -292,16 +292,16 @@ export class DashboardView {
                     symbol: 'circle',
                     symbolSize: 6,
                     lineStyle: {
-                        color: '#60a5fa',
+                        color: '#38bdf8',
                         width: 3
                     },
                     itemStyle: {
-                        color: '#60a5fa'
+                        color: '#38bdf8'
                     },
                     areaStyle: {
                         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: 'rgba(96, 165, 250, 0.4)' },
-                            { offset: 1, color: 'rgba(96, 165, 250, 0.05)' }
+                            { offset: 0, color: 'rgba(56, 189, 248, 0.38)' },
+                            { offset: 1, color: 'rgba(56, 189, 248, 0.04)' }
                         ])
                     }
                 },
@@ -313,16 +313,16 @@ export class DashboardView {
                     symbol: 'circle',
                     symbolSize: 6,
                     lineStyle: {
-                        color: '#34d399',
+                        color: '#22d3ee',
                         width: 3
                     },
                     itemStyle: {
-                        color: '#34d399'
+                        color: '#22d3ee'
                     },
                     areaStyle: {
                         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: 'rgba(52, 211, 153, 0.4)' },
-                            { offset: 1, color: 'rgba(52, 211, 153, 0.05)' }
+                            { offset: 0, color: 'rgba(34, 211, 238, 0.38)' },
+                            { offset: 1, color: 'rgba(34, 211, 238, 0.04)' }
                         ])
                     }
                 },
@@ -334,16 +334,16 @@ export class DashboardView {
                     symbol: 'circle',
                     symbolSize: 6,
                     lineStyle: {
-                        color: '#fbbf24',
+                        color: '#818cf8',
                         width: 3
                     },
                     itemStyle: {
-                        color: '#fbbf24'
+                        color: '#818cf8'
                     },
                     areaStyle: {
                         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: 'rgba(251, 191, 36, 0.4)' },
-                            { offset: 1, color: 'rgba(251, 191, 36, 0.05)' }
+                            { offset: 0, color: 'rgba(129, 140, 248, 0.38)' },
+                            { offset: 1, color: 'rgba(129, 140, 248, 0.04)' }
                         ])
                     }
                 }
@@ -573,8 +573,8 @@ export class DashboardView {
                     data: data.actual,
                     itemStyle: {
                         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: '#60a5fa' },
-                            { offset: 1, color: '#3b82f6' }
+                            { offset: 0, color: '#38bdf8' },
+                            { offset: 1, color: '#2563eb' }
                         ])
                     },
                     barWidth: '30%',
@@ -586,8 +586,8 @@ export class DashboardView {
                     data: data.target,
                     itemStyle: {
                         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: '#34d399' },
-                            { offset: 1, color: '#10b981' }
+                            { offset: 0, color: '#67e8f9' },
+                            { offset: 1, color: '#6366f1' }
                         ])
                     },
                     barWidth: '30%',
@@ -687,7 +687,7 @@ export class DashboardView {
         if (chart) {
             const dataURL = chart.getDataURL({
                 pixelRatio: 2,
-                backgroundColor: '#1a1a2e'
+                backgroundColor: '#020617'
             });
 
             const link = document.createElement('a');

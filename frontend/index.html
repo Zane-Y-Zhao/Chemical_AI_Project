@@ -4,11 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>化工余热智能管理系统</title>
-    <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css?v=20260412c">
+    <link rel="stylesheet" href="/css/dashboard.css?v=20260412d">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 </head>
 <body>
+    <div class="ambient-bg" aria-hidden="true">
+        <div class="ambient-bg__base"></div>
+        <div class="ambient-bg__aurora"></div>
+        <div class="ambient-bg__aurora ambient-bg__aurora--slow"></div>
+        <div class="ambient-bg__mesh"></div>
+        <div class="ambient-bg__hex"></div>
+        <div class="ambient-bg__flow"></div>
+        <div class="ambient-bg__flow ambient-bg__flow--vert"></div>
+        <div class="ambient-bg__sweep"></div>
+        <div class="ambient-bg__rings" aria-hidden="true">
+            <span></span><span></span><span></span>
+        </div>
+        <div class="ambient-bg__glow ambient-bg__glow--a"></div>
+        <div class="ambient-bg__glow ambient-bg__glow--b"></div>
+        <div class="ambient-bg__glow ambient-bg__glow--c"></div>
+        <div class="ambient-bg__glow ambient-bg__glow--d"></div>
+        <div class="ambient-bg__sparkles"></div>
+        <div class="ambient-bg__vignette"></div>
+    </div>
     <div id="app"></div>
     <script type="module" src="/js/app.js"></script>
     <script type="module" src="/js/views/DashboardView.js"></script>

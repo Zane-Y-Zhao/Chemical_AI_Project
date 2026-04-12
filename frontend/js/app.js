@@ -18,17 +18,59 @@ function initLightEffect() {
     // 鼠标移动事件监听
     document.addEventListener('mousemove', (e) => {
         const { clientX, clientY } = e;
-        lightEffect.style.left = `${clientX - 150}px`;
-        lightEffect.style.top = `${clientY - 150}px`;
+        const half = 210;
+        lightEffect.style.left = `${clientX - half}px`;
+        lightEffect.style.top = `${clientY - half}px`;
     });
     
     // 触摸移动事件监听（移动设备）
     document.addEventListener('touchmove', (e) => {
         if (e.touches.length > 0) {
             const { clientX, clientY } = e.touches[0];
-            lightEffect.style.left = `${clientX - 150}px`;
-            lightEffect.style.top = `${clientY - 150}px`;
+            const half = 210;
+            lightEffect.style.left = `${clientX - half}px`;
+            lightEffect.style.top = `${clientY - half}px`;
         }
+    });
+}
+
+// 初始化化工元素装饰
+function initChemicalDecorations() {
+    const app = document.getElementById('app');
+    if (!app) return;
+    
+    // 创建原子装饰元素
+    const atoms = [
+        { top: '10%', left: '15%' },
+        { top: '60%', left: '85%' },
+        { top: '30%', left: '70%' },
+        { top: '80%', left: '20%' }
+    ];
+    
+    atoms.forEach((pos, index) => {
+        const atom = document.createElement('div');
+        atom.className = 'chemical-decoration atom';
+        atom.style.top = pos.top;
+        atom.style.left = pos.left;
+        atom.style.animationDelay = `${index * 2}s`;
+        app.appendChild(atom);
+    });
+    
+    // 创建管道装饰元素
+    const pipes = [
+        { top: '25%', left: '10%', rotate: '0deg' },
+        { top: '75%', left: '50%', rotate: '90deg' },
+        { top: '45%', left: '80%', rotate: '45deg' }
+    ];
+    
+    pipes.forEach((pos, index) => {
+        const pipe = document.createElement('div');
+        pipe.className = 'chemical-decoration pipe';
+        pipe.style.top = pos.top;
+        pipe.style.left = pos.left;
+        pipe.style.transform = `rotate(${pos.rotate})`;
+        pipe.style.animationDelay = `${index * 0.5}s`;
+        app.appendChild(pipe);
     });
 }
 
@@ -38,6 +80,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (container) {
         // 初始化鼠标跟随光影效果
         initLightEffect();
+        
+        // 初始化化工元素装饰
+        initChemicalDecorations();
         
         // 初始化仪表盘视图
         window.dashboard = new DashboardView(container);

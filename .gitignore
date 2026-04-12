@@ -222,3 +222,6 @@ logs/
 *.log
 __pycache__/
 .DS_Store
+
+# 本地模型文件
+all-MiniLM-L6-v2/

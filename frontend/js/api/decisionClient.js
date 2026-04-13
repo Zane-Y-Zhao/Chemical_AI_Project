@@ -12,11 +12,31 @@ const API_BASE_URL = window.location.origin;
  */
 export async function getDecisionAdvice(params = {}) {
     try {
-        // 直接返回模拟数据，避免API请求错误
-        return getMockDecisionData();
+        const payload = {
+            temperature: params.temperature ?? 85.5,
+            pressure: params.pressure ?? 4.2,
+            flow_rate: params.flow_rate ?? 10.5,
+            heat_value: params.heat_value ?? 1250.8,
+            timestamp: params.timestamp ?? new Date().toISOString(),
+            unit: params.unit ?? '°C'
+        };
+
+        const response = await fetch(`${API_BASE_URL}/api/v1/decision`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        return await response.json();
     } catch (error) {
         console.error('获取决策建议失败:', error);
-        // 返回模拟数据，确保前端正常显示
+        // 仅在后端不可达时回退模拟数据
         return getMockDecisionData();
     }
 }

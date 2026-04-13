@@ -17,21 +17,21 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 class TransformerModel(nn.Module):
-    def __init__(self, input_size, d_model=64, nhead=2, num_layers=1, output_size=21, dropout=0.3):
+    def __init__(self, input_size, d_model=64, nhead=2, num_layers=1, output_size=21, dropout=0.3, dim_feedforward=128, hidden_size=32):
         super(TransformerModel, self).__init__()
         self.d_model = d_model
         self.embedding = nn.Linear(input_size, d_model)
         self.pos_encoder = PositionalEncoding(d_model, dropout)
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=nhead, dim_feedforward=128,
+            d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward,
             dropout=dropout, batch_first=True
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.fc = nn.Sequential(
-            nn.Linear(d_model, 32),
+            nn.Linear(d_model, hidden_size),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(32, output_size)
+            nn.Linear(hidden_size, output_size)
         )
 
     def forward(self, x):

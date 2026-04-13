@@ -8,6 +8,8 @@ sys.path.append(str(ROOT_DIR))   # 将根目录加入模块搜索路径
 
 import logging
 import time
+import json
+from collections import deque
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -17,7 +19,11 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from rank_bm25 import BM25Okapi
 import numpy as np
 import re
+import torch
+import torch.nn as nn
 # 直接实现HyDE检索，避免循环导入问题
+
+from models import PositionalEncoding
 
 # 确保logs目录存在
 log_dir = ROOT_DIR / "logs"
@@ -40,6 +46,193 @@ embedding_func = None
 vectorstore = None
 bm25_index = None
 documents = []
+
+# === Transformer 在线推理配置 ===
+TRANSFORMER_MODEL_PATH = ROOT_DIR / "runs" / "te_transformer" / "best_transformer_te.pth"
+TRANSFORMER_SCALER_PATH = ROOT_DIR / "runs" / "te_transformer" / "standard_scaler.npy"
+TRANSFORMER_METRICS_PATH = ROOT_DIR / "runs" / "te_transformer" / "metrics.json"
+TRANSFORMER_DEFAULT_WINDOW_SIZE = 20
+TRANSFORMER_DEFAULT_FEATURE_COUNT = 15
+TRANSFORMER_DEFAULT_CLASS_COUNT = 21
+
+transformer_runtime = {
+    "ready": False,
+    "device": "cpu",
+    "model": None,
+    "window_size": TRANSFORMER_DEFAULT_WINDOW_SIZE,
+    "feature_count": TRANSFORMER_DEFAULT_FEATURE_COUNT,
+    "class_count": TRANSFORMER_DEFAULT_CLASS_COUNT,
+    "mean": None,
+    "scale": None,
+    "history": deque(maxlen=TRANSFORMER_DEFAULT_WINDOW_SIZE),
+}
+
+CLASS_TO_SCENARIO = {
+    0: "normal",
+    1: "temperature_rise",
+    4: "pressure_drop",
+    8: "flow_instability",
+    9: "pressure_drop",
+    11: "flow_instability",
+    12: "temperature_rise",
+    14: "pressure_drop",
+    15: "flow_instability",
+    18: "temperature_rise",
+}
+
+
+class TransformerRuntimeModel(nn.Module):
+    """与当前 best_transformer_te.pth 结构对齐的推理模型。"""
+
+    def __init__(self, input_size: int, output_size: int):
+        super().__init__()
+        d_model = 128
+        dropout = 0.2
+        self.d_model = d_model
+        self.embedding = nn.Linear(input_size, d_model)
+        self.pos_encoder = PositionalEncoding(d_model, dropout)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model,
+            nhead=4,
+            dim_feedforward=256,
+            dropout=dropout,
+            batch_first=True,
+        )
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.fc = nn.Sequential(
+            nn.Linear(d_model, 64),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(64, output_size),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.embedding(x) * torch.sqrt(torch.tensor(self.d_model, dtype=torch.float32, device=x.device))
+        x = self.pos_encoder(x)
+        x = self.transformer_encoder(x)
+        x = x[:, -1, :]
+        x = self.fc(x)
+        return x
+
+
+def build_transformer_features(input_data: "PredictionInput", feature_count: int) -> np.ndarray:
+    """将在线输入映射为固定长度特征向量，保持与训练维度一致。"""
+    temp = float(input_data.temperature)
+    pressure = float(input_data.pressure)
+    flow = float(input_data.flow_rate)
+    heat = float(input_data.heat_value)
+
+    base_features = np.array(
+        [
+            temp,
+            pressure,
+            flow,
+            heat,
+            temp * pressure,
+            temp * flow,
+            pressure * flow,
+            heat / max(flow, 1e-6),
+            temp - 80.0,
+            pressure - 3.5,
+            flow - 9.0,
+            np.log1p(max(heat, 0.0)),
+            temp / max(pressure, 1e-6),
+            heat / max(temp, 1e-6),
+            (temp + pressure + flow) / 3.0,
+        ],
+        dtype=np.float32,
+    )
+
+    if feature_count <= base_features.shape[0]:
+        return base_features[:feature_count]
+
+    padded = np.zeros(feature_count, dtype=np.float32)
+    padded[: base_features.shape[0]] = base_features
+    return padded
+
+
+def _init_transformer_runtime() -> None:
+    if transformer_runtime["ready"]:
+        return
+
+    if not TRANSFORMER_MODEL_PATH.exists() or not TRANSFORMER_SCALER_PATH.exists():
+        logger.warning("Transformer model artifacts missing, runtime not ready")
+        return
+
+    try:
+        window_size = TRANSFORMER_DEFAULT_WINDOW_SIZE
+        feature_count = TRANSFORMER_DEFAULT_FEATURE_COUNT
+        class_count = TRANSFORMER_DEFAULT_CLASS_COUNT
+        if TRANSFORMER_METRICS_PATH.exists():
+            with TRANSFORMER_METRICS_PATH.open("r", encoding="utf-8") as f:
+                metrics = json.load(f)
+                window_size = int(metrics.get("window_size", window_size))
+                feature_count = int(metrics.get("feature_count", feature_count))
+                class_count = int(metrics.get("class_count", class_count))
+
+        scaler_stats = np.load(TRANSFORMER_SCALER_PATH)
+        mean = scaler_stats[0].astype(np.float32)
+        scale = scaler_stats[1].astype(np.float32)
+        scale[scale == 0] = 1.0
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = TransformerRuntimeModel(input_size=feature_count, output_size=class_count).to(device)
+        state = torch.load(TRANSFORMER_MODEL_PATH, map_location=device)
+        model.load_state_dict(state)
+        model.eval()
+
+        transformer_runtime["ready"] = True
+        transformer_runtime["device"] = str(device)
+        transformer_runtime["model"] = model
+        transformer_runtime["window_size"] = window_size
+        transformer_runtime["feature_count"] = feature_count
+        transformer_runtime["class_count"] = class_count
+        transformer_runtime["mean"] = mean
+        transformer_runtime["scale"] = scale
+        transformer_runtime["history"] = deque(maxlen=window_size)
+
+        logger.info(
+            "Transformer runtime ready | device=%s | window_size=%s | feature_count=%s | class_count=%s",
+            transformer_runtime["device"],
+            window_size,
+            feature_count,
+            class_count,
+        )
+    except Exception as ex:
+        logger.error("Transformer runtime init failed: %s", str(ex))
+
+
+def predict_with_transformer(input_data: "PredictionInput") -> Tuple[str, float, int]:
+    _init_transformer_runtime()
+
+    if not transformer_runtime["ready"]:
+        raise RuntimeError("Transformer runtime is not ready")
+
+    feature_count = transformer_runtime["feature_count"]
+    mean = transformer_runtime["mean"]
+    scale = transformer_runtime["scale"]
+
+    current_features = build_transformer_features(input_data, feature_count)
+    scaled_features = (current_features - mean) / scale
+
+    history = transformer_runtime["history"]
+    if len(history) == 0:
+        for _ in range(transformer_runtime["window_size"] - 1):
+            history.append(scaled_features.copy())
+    history.append(scaled_features)
+
+    window = np.asarray(list(history), dtype=np.float32)
+    x = torch.tensor(window[None, :, :], dtype=torch.float32, device=transformer_runtime["model"].fc[0].weight.device)
+
+    with torch.no_grad():
+        logits = transformer_runtime["model"](x)
+        probs = torch.softmax(logits, dim=1).cpu().numpy()[0]
+
+    pred_class = int(np.argmax(probs))
+    confidence = float(np.max(probs))
+    scenario = CLASS_TO_SCENARIO.get(pred_class, "normal")
+
+    return scenario, confidence, pred_class
 
 # HyDE（假设性文档嵌入）生成函数
 def generate_hypothetical_answer(query: str) -> str:
@@ -385,6 +578,15 @@ class DecisionOutput(BaseModel):
     source_trace: SourceTrace = Field(..., description="决策来源追踪信息")
     execution_time_ms: float = Field(..., description="端到端处理耗时（毫秒）", example=2340.5)
 
+
+class TransformerPredictionOutput(BaseModel):
+    status: str = Field(..., description="响应状态", example="success")
+    prediction: str = Field(..., description="业务预测标签", example="temperature_rise")
+    predicted_class_id: int = Field(..., description="模型类别ID", example=12)
+    confidence: float = Field(..., ge=0.0, le=1.0, description="预测置信度", example=0.94)
+    model_version: str = Field(..., description="模型版本", example="te_transformer_v1")
+    timestamp: str = Field(..., description="预测时间戳", example="2026-04-10T14:30:00")
+
 # 对话相关的请求和响应模型
 class ConversationInput(BaseModel):
     session_id: str = Field(..., description="会话ID", example="session_123")
@@ -439,15 +641,15 @@ def generate_decision_core(input_data: PredictionInput) -> DecisionOutput:
         # 导入必要的函数
         from knowledge_base.prompt_engineering import build_decision_prompt, get_safety_rules
         
-        # 模拟模型预测结果
-        prediction = "temperature_rise" if input_data.temperature > 80 else "normal"
-        confidence = 0.94 if input_data.temperature > 80 else 0.90
+        # 使用真实Transformer模型执行在线推理
+        prediction, confidence, predicted_class_id = predict_with_transformer(input_data)
         
         # 构建预测数据
         prediction_data = {
             "prediction": prediction,
             "confidence": confidence,
-            "timestamp": input_data.timestamp
+            "timestamp": input_data.timestamp,
+            "predicted_class_id": predicted_class_id,
         }
         
         # 基于预测类型检索相关知识
@@ -533,10 +735,10 @@ def generate_decision_core(input_data: PredictionInput) -> DecisionOutput:
                 reasoning="基于当前温度数据，建议检查阀门状态以确保系统安全"
             ),
             source_trace=SourceTrace(
-                prediction_source="http://localhost:8001/api/v1/transformer/predict",
+                prediction_source=f"/api/v1/transformer/predict (class_id={predicted_class_id})",
                 knowledge_source=knowledge_source,
                 safety_clause="GB/T 37243-2019",
-                model_version="v1.0.0",
+                model_version="te_transformer_v1",
                 confidence=confidence,
                 timestamp=input_data.timestamp
             ),
@@ -585,6 +787,27 @@ app.add_middleware(
 )
 
 # API端点
+@app.post("/api/v1/transformer/predict", response_model=TransformerPredictionOutput, tags=["Prediction"])
+async def transformer_predict(input_data: PredictionInput):
+    """Transformer 在线推理端点。"""
+    if input_data.unit != "°C":
+        raise HTTPException(status_code=422, detail="Invalid unit: only °C is supported")
+
+    try:
+        prediction, confidence, pred_class = predict_with_transformer(input_data)
+        return TransformerPredictionOutput(
+            status="success",
+            prediction=prediction,
+            predicted_class_id=pred_class,
+            confidence=confidence,
+            model_version="te_transformer_v1",
+            timestamp=input_data.timestamp,
+        )
+    except Exception as ex:
+        logger.error("Transformer prediction failed: %s", str(ex))
+        raise HTTPException(status_code=503, detail=f"Transformer service unavailable: {str(ex)}")
+
+
 @app.post("/api/v1/decision", response_model=DecisionOutput, tags=["Decision"])
 async def get_decision_suggestion(input_data: PredictionInput):
     """

@@ -9,11 +9,13 @@ from datetime import datetime
 class TrainMonitor:
     """模型训练监控器，记录损失、指标，可视化训练曲线"""
 
-    def __init__(self, model, device, log_dir=r"D:\TE_Project1\logs"):
+    def __init__(self, model, device, log_dir="logs", model_dir="models"):
         self.model = model
         self.device = device
         self.log_dir = log_dir
+        self.model_dir = model_dir
         os.makedirs(log_dir, exist_ok=True)
+        os.makedirs(model_dir, exist_ok=True)
 
         # 训练记录
         self.train_losses = []
@@ -46,14 +48,20 @@ class TrainMonitor:
         # 保存最佳模型
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
-            self.best_model_path = os.path.join(r"D:\TE_Project1\models",
-                                                f"best_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pth")
+            self.best_model_path = os.path.join(
+                self.model_dir,
+                f"best_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pth"
+            )
             torch.save(self.model.state_dict(), self.best_model_path)
             print(f"✅ 最佳模型已保存，验证集准确率: {val_acc:.4f}")
 
     def plot_curves(self, save_path=None):
         """绘制训练/验证损失和准确率曲线"""
+        # 兼容 Windows/多环境中文显示，确保标题可读
+        plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "Arial Unicode MS", "DejaVu Sans"]
+        plt.rcParams["axes.unicode_minus"] = False
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+        fig.suptitle("图2 模型训练 Loss 与准确率曲线", fontsize=13)
 
         # 损失曲线
         ax1.plot(self.train_losses, label="Train Loss")
@@ -73,7 +81,7 @@ class TrainMonitor:
         ax2.legend()
         ax2.grid(True)
 
-        plt.tight_layout()
+        plt.tight_layout(rect=[0, 0, 1, 0.93])
         if save_path is None:
             save_path = os.path.join(self.log_dir, f"train_curves_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
         plt.savefig(save_path, dpi=300, bbox_inches="tight")

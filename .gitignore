@@ -222,6 +222,8 @@ logs/
 *.log
 __pycache__/
 .DS_Store
+*.db-wal
+*.db-shm
 
 # Local model and training outputs
 models/
